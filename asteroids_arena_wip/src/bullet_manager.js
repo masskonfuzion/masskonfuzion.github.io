@@ -60,9 +60,9 @@ BulletManager.prototype.postUpdate = function(dt_s, config=null) {
         }
 
         var physComp = bullet.components["physics"];
-        // TODO replace 512's here with the arena's dimensions
-        if (physComp.currPos[0] < 0 || physComp.currPos[0] > 512 ||
-            physComp.currPos[1] < 0 || physComp.currPos[1] > 512 ) {
+        // TODO replace game.xSize and game.ySize (which are the viewport dimensions) with the arena's dimensions. Also, for that matter.. rename game.[xy]Size to something more descriptive? Like, window/viewport size?
+        if (physComp.currPos[0] < 0 || physComp.currPos[0] > game.xSize ||
+            physComp.currPos[1] < 0 || physComp.currPos[1] > game.ySize ) {
                 cmdMsg = { "topic": "GameCommand",
                            "command": "disableBullet",
                            "objRef": this,
