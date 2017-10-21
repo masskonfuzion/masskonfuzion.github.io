@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Hello World!</title>
+</head>
+
+<script src="src/gl-matrix.js" type="text/javascript"></script>
+<script src="src/application.js" type="text/javascript"></script>
+<script src="src/timer.js" type="text/javascript"></script>
+<script src="src/queue_base.js" type="text/javascript"></script>
+<script src="src/message_queue.js" type="text/javascript"></script>
+<script src="src/image_manager.js" type="text/javascript"></script>
+<script src="src/game_object.js" type="text/javascript"></script>
+<script src="src/game_object_component.js" type="text/javascript"></script>
+<script src="src/game_logic.js" type="text/javascript"></script>
+<script src="src/physics_component.js" type="text/javascript"></script>
+<script src="src/render_component.js" type="text/javascript"></script>
+<script src="src/spaceship.js" type="text/javascript"></script>
+<script src="src/particle_emitter.js" type="text/javascript"></script>
+<script src="src/particle.js" type="text/javascript"></script>
+<script src="src/particle_system.js" type="text/javascript"></script>
+<script src="src/asteroid.js" type="text/javascript"></script>
+<script src="src/asteroid_manager.js" type="text/javascript"></script>
+<script src="src/bullet.js" type="text/javascript"></script>
+<script src="src/bullet_manager.js" type="text/javascript"></script>
+<script src="src/quadtree.js" type="text/javascript"></script>
+<script src="src/collision_component.js" type="text/javascript"></script>
+<script src="src/collision_manager.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+var game = new GameApplication(640, 360);   // Global scope
+var frameID = null;
+var gameLogic = new GameLogic();
+
+
+// Trap keyboard events and forward them to game logic
+function keyboardHandler(evt) {
+    gameLogic.handleKeyboardInput(evt);
+}
+
+function mainEntryPoint() {
+    // Register event listener functions for keyboard input
+    document.addEventListener("keydown", keyboardHandler);
+    document.addEventListener("keyup", keyboardHandler);
+
+
+    game.initialize();
+
+    var imgAsset_spaceship = new ImageAsset("assets/images/spaceship_04.png");
+    var imgAsset_astLarge = new ImageAsset("assets/images/asteroid_32x32.png");
+    var imgAsset_astMedium = new ImageAsset("assets/images/asteroid_16x16.png");
+    var imgAsset_astSmall = new ImageAsset("assets/images/asteroid_8x8.png");
+    game.imgMgr.addImgToMap("ship", imgAsset_spaceship);
+    game.imgMgr.addImgToMap("astLarge", imgAsset_astLarge);
+    game.imgMgr.addImgToMap("astMedium", imgAsset_astMedium);
+    game.imgMgr.addImgToMap("astSmall", imgAsset_astSmall);
+
+    // NOTE: all image loading must be done before initializing the gameLogic object
+    gameLogic.initialize();
+
+    start();
+}
+
+function start()
+{
+    console.log("Starting");
+    //if (!gApp.started) {
+    //    gApp.started = true; // started is like a first-time-through flag. We care about started really only one time (at the very beginning of execution)
+    //    frameID = requestAnimationFrame(function(timestamp) {
+    //        gApp.drawScene(gameLogic);    // Do initial draw, dummy frame just to get timestamp and such
+    //        gApp.running = true; // running is a flag to determine whether or not the mainloop is running
+    //        gApp.frameID = requestAnimationFrame(mainLoop);
+    //    });
+    //}
+
+    frameID = requestAnimationFrame(mainloop);
+    console.log("Started");
+}
+
+
+function stop()
+{
+    console.log("Stopping");
+
+    //gApp.running = false;
+    //gApp.started = false;
+    //cancelAnimationFrame(gApp.frameID);
+
+    console.log("Stopped");
+}
+
+function mainloop(timestamp)
+{
+    // NOTE requestAnimationFrame passes in a timestamp into the function being called
+    gameLogic.timer.doFrameTimer(timestamp);
+
+
+	while (gameLogic.timer.elapsed >= gameLogic.fixed_dt_s) {
+	    gameLogic.processMessages(gameLogic.fixed_dt_s);
+        // Note: lurking in the gameLogic update() is a collisionMgr update that will attempt (but be blocked) to enqueue multiple collision events.
+		gameLogic.update(gameLogic.fixed_dt_s);
+		gameLogic.timer.elapsed -= gameLogic.fixed_dt_s;
+	}
+
+    drawStuff();
+    frameID = requestAnimationFrame(mainloop);
+
+}
+
+function drawStuff()
+{
+    gameLogic.draw();   // No need to pass anything to the function, because the application class is global (so we already have access to all its members)
+}
+
+</script>
+
+<body onload="mainEntryPoint()">
+    <canvas id="canvas" width="640" height="360">Sorry, something went wrong... (But what was it.....?)</canvas>
+</body>
+
+</html>
+
