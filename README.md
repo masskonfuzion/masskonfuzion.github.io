@@ -7,5 +7,5 @@ Mass KonFuzion's GitHub Pages
 * GitHub Repos: https://github.com/masskonfuzion
 
 # Active Projects
-* [Asteroids Arena](https://masskonfuzion.github.io/asteroids_arena/)
+* [Asteroids Arena](https://masskonfuzion.github.io/asteroids_arena/index.html)
 
