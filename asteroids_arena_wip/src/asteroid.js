@@ -6,6 +6,9 @@ function Asteroid () {
     this.addComponent("render", new RenderComponentSprite());       // Each asteroid can be a particular size (e.g. small, medium, or large). The AsteroidManager will control all asteroids
     this.addComponent("collision", new CollisionComponentAABB());
 
+    // NOTE: Because Asteroid derives from Particle, we're actually overriding the components that a Particle normally "ships" with.
+    // TODO -- rework this Asteroid-as-a-subclass-of-Particle design; it's confusing
+
     this.hitPoints = 1;
     this.size = 2;  // Sizes are: 2=large, 1=medium, 0=small
     this.autoExpire = false;    // override the Particle's autoExpire property

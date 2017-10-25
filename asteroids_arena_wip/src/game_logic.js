@@ -61,7 +61,9 @@ GameLogic.prototype.initialize = function() {
     astMgrRef.initialize(1, 16);
 
     // ----- Initialize Arena
-    // TODO -- make arena. Simplest is rectangle obj {x, y, width, height}; but can also make a class, with arbitrary arena shape, and the ability to test for containment of objs within itself.  Can use this test to determine when to expire bullet objects
+    this.addGameObject("arena", new Arena());
+    var arenaRef = this.gameObjs["arena"];
+    arenaRef.initialize();
 
 };
 
@@ -82,16 +84,26 @@ GameLogic.prototype.setAngularVel = function(shipRef, angVel) {
     // 
 };
 
-GameLogic.prototype.draw = function() {
+GameLogic.prototype.draw = function(canvasContext) {
+    canvasContext.setTransform(1,0,0,1,0,0);    // Reset transformation (similar to OpenGL loadIdentity() for matrices)
+
     // Clear the canvas (note that the game application object is global)
-    game.context.fillStyle = 'black';
-    game.context.fillRect(0,0, game.canvas.width, game.canvas.height);
+    canvasContext.fillStyle = 'black';
+    canvasContext.fillRect(0,0, game.canvas.width, game.canvas.height);
+
+    // TODO replace with a proper camera class. Update the camera during the update cycle (allow camera to track any given object), then simply apply camera transform here
+    var camPos = vec2.create();
+    var viewportCenter = vec2.create();
+    vec2.set(viewportCenter, game.canvas.width / 2, game.canvas.height / 2);
+    vec2.sub(camPos, viewportCenter, this.gameObjs["ship"].components["physics"].currPos);
+
+    canvasContext.translate(camPos[0], camPos[1]);
 
     // the game application obj is global
     for (var goKey in this.gameObjs) {
         if (this.gameObjs.hasOwnProperty(goKey)) {
             if ("render" in this.gameObjs[goKey].components || this.gameObjs[goKey].draw) {  // Make sure the component has a render component, or otherwise has a draw method
-                this.gameObjs[goKey].draw(game.context);        // Assume that the draw() function for a GameObject calls into the draw() function for its render component
+                this.gameObjs[goKey].draw(canvasContext);        // Assume that the draw() function for a GameObject calls into the draw() function for its render component
             }
         }
     }

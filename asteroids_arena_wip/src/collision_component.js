@@ -40,6 +40,7 @@ CollisionComponentAABB.prototype.draw = function(canvasContext) {
     var width = this.getWidth();
     var height = this.getHeight();
     canvasContext.strokeStyle = "yellow";
+    canvasContext.lineWidth = 1;
     canvasContext.strokeRect(this.center[0] - width/2, this.center[1] - height/2, width, height)
 };
 

@@ -78,23 +78,8 @@ AsteroidManager.prototype.resetAsteroidField = function() {
 };
 
 AsteroidManager.prototype.draw = function(canvasContext) {
-    // Draw each alive Particle
     var myPS = this.components["asteroidPS"];
-    for (var particle of myPS.particles) {
-        if (particle.alive) {
-            //var myPhysicsComp = particle.components["physics"];
-            ////canvasContext.translate(myPhysicsComp.currPos[0], myPhysicsComp.currPos[1]);
-            //canvasContext.rotate( glMatrix.toRadian(myPhysicsComp.angle) );
-
-            particle.draw(canvasContext);
-            //canvasContext.restore(); // similar to glPopMatrix
-
-            // DEBUG STUFF -- TODO delete
-            var myCollisionComp = particle.components["collision"];
-            myCollisionComp.draw(canvasContext);
-
-        }
-    }
+    myPS.draw(canvasContext);
 };
 
 

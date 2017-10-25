@@ -20,11 +20,17 @@ Particle.prototype = Object.create(GameObject.prototype);
 Particle.prototype.constructor = Particle;
 
 Particle.prototype.draw = function(canvasContext) {
+    canvasContext.save();
+
     // Get the particle's physics component
     var physComp = this.components["physics"];
 
+    canvasContext.translate(physComp.currPos[0], physComp.currPos[1]);
+    // TODO maybe also add rotation
+
     // draw the render component
-    this.components["render"].draw(canvasContext, physComp.currPos[0], physComp.currPos[1]);
+    this.components["render"].draw(canvasContext);
+    canvasContext.restore();
 };
 
 Particle.prototype.setAutoExpire = function(tf) {
@@ -34,7 +40,8 @@ Particle.prototype.setAutoExpire = function(tf) {
 
 Particle.prototype.update = function(dt_s, config = null) {
     if (this.alive) {
-        this.components["physics"].update(dt_s);
+        var physComp = this.components["physics"];
+        physComp.update(dt_s);
 
         if (this.autoExpire) {
             this.ttl -= dt_s;

@@ -114,7 +114,6 @@ Spaceship.prototype.update = function(dt_s, config = null) {
             this.components[compName].update(dt_s, updateConfigObj);
         }
     }
-
 }
 
 // Override the class default executeCommand()
@@ -133,9 +132,9 @@ Spaceship.prototype.draw = function(canvasContext) {
     canvasContext.save();    // similar to glPushMatrix
 
     canvasContext.translate(myPhysicsComp.currPos[0], myPhysicsComp.currPos[1]);
-    canvasContext.rotate( glMatrix.toRadian(myPhysicsComp.angle) );
-    // Draw the sprite -- offset by half the width/height so that the x/y coords of the ship's position represent the center of the image, instead of the top-left corner
-    myRenderComp.draw(canvasContext, 0, 0);
+    canvasContext.rotate( glMatrix.toRadian(myPhysicsComp.angle) );                 // Rotate
+
+    myRenderComp.draw(canvasContext);                                               // Draw -- rendercomponent will use my position, so this draw() effectively "translates" the sprite to where it belongs
     canvasContext.restore(); // similar to glPopMatrix
 
     // ----- DEBUGGING stuff
