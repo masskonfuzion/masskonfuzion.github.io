@@ -358,7 +358,6 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                    "params": { "bulletToDisable": bulletRef }
                  };
 
-        // TODO also destroy the bullet
         this.messageQueue.enqueue(cmdMsg);
 
     } else if (gameObjAType == "Bullet" && gameObjBType == "Spaceship" || gameObjBType == "Bullet" && gameObjAType == "Spaceship") {
@@ -381,5 +380,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         }
 
     }
+
+    // TODO add AABB/Line Segment collision test (i.e., for asteroid/bullet/spaceship leaves arena)? NOTE: right now, bullet/arena boundary testing is done.. elsewhere. find it
 };
 
