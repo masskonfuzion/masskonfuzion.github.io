@@ -52,7 +52,7 @@ ParticleEmitter.prototype.registerParticleSystem = function(particleSys) {
 // We want to be able to emit from one or more "emit points", e.g. multiple thrusters or multiple guns/missile launchers -- should guns/missiles be treated as particles? (if so, should missiles have logic, e.g. homing missiles? Should this game even have missiles?)
 
 // Get the "next available particle" in the system, and initialize it
-// If getNextUnusedParticle() fails, then this function should fail silently (at most, log to console)
+// If getNextUsableParticle() fails, then this function should fail silently (at most, log to console)
 ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
     // TODO update emitParticle to take in the type of particle to emit (or, e.g., info about how to initialize the particle. Use the Transfer Object pattern -- the object will contain config info re: particles with sprite rendering vs other type of rendering)
     var particle = this.registeredPS.getNextUsableParticle();
@@ -128,6 +128,8 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
             collMgr.addCollider(particle.components["collision"]);
         }
 
+    } else {
+        console.log("Unable to satisfy getNextUsableParticle call!");
     }
 };
 

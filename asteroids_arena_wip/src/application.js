@@ -1,5 +1,5 @@
 function GameApplication(xSize=512, ySize=512) {
-    console.log("Made an application obj");
+    //console.log("Made an application obj");
     this.xSize = xSize;
     this.ySize = ySize;
 

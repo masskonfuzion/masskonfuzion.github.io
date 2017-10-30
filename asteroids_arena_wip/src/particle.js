@@ -31,6 +31,11 @@ Particle.prototype.draw = function(canvasContext) {
     // draw the render component
     this.components["render"].draw(canvasContext);
     canvasContext.restore();
+
+    // TODO delete: DEBUGGING
+    if (this.components.hasOwnProperty("collision")) {
+        this.components["collision"].draw(canvasContext);
+    }
 };
 
 Particle.prototype.setAutoExpire = function(tf) {

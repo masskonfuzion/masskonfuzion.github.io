@@ -31,11 +31,11 @@ QueueBase.prototype.initialize = function(numItems) {
     if (this._queue.length > 0) {
         throw new Error ("Queue alredy initialized");
     } else {
+        //console.log("Initializing queue: " + numItems + " items.");
         for (var i = 0; i < numItems; i++) {
-            console.log("Initializing queue: " + numItems + " items.");
             this._queue.push(null);     // Initialize the array with null objects
         }
-        console.log("Initalized queue with " + numItems + " items.");
+        //console.log("Initalized queue with " + numItems + " items.");
     }
 
 };
@@ -58,7 +58,7 @@ QueueBase.prototype.enqueue = function(obj) {
 
     // TODO - make sure we're copying, instead of adding object references? (I think that's what we want?)
     this._queue[this._tail] = obj;
-    console.log("Enqueued an object at index " + this._tail + ". (head= " + this._head + ").");
+    //console.log("Enqueued an object at index " + this._tail + ". (head= " + this._head + ").");
 };
     // NOTE: There are some quirks about how push() behaves that you should
     // read about somewhere else.. Just note that push() is actually the method
@@ -69,11 +69,11 @@ QueueBase.prototype.enqueue = function(obj) {
 
 QueueBase.prototype.dequeue = function() {
     if (this._empty) {
-        console.log("Nothing to dequeue; queue is empty");
+        //console.log("Nothing to dequeue; queue is empty");
         return null;
     } else {
         return_obj = this._queue[this._head];
-        console.log("Dequeued an object from head=" + this._head + " (tail=" + this._tail + ").");
+        //console.log("Dequeued an object from head=" + this._head + " (tail=" + this._tail + ").");
 
         if ((this._head == this._tail) && (!this._empty)) {
             this._empty = true;

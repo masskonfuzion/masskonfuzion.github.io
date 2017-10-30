@@ -75,7 +75,7 @@ CollisionManager.prototype.update = function(dt_s, configObj) {
         if (potentialCollisions.hasOwnProperty(key)) {
             // determine whether to add this object pair to the final potential collision set
             if (this.isColliding(potentialCollisions[key]["objA"], potentialCollisions[key]["objB"])) {
-                console.log("Collision detected!");
+                //console.log("Collision detected!");
                 // Enqueue a message to the gameLogic object with information about the collision, for the gameLogic to decide how to respond
                 var collisionMsg = { "topic": "CollisionEvent",
                                      "colliderA": potentialCollisions[key]["objA"],

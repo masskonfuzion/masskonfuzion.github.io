@@ -1,8 +1,13 @@
 // Global scope
 var CollisionComponentTypeEnum = { "circle": 0,
-                                   "aabb": 1
+                                   "aabb": 1,
+                                   "obb": 2
                                  };
 
+
+//================================================================================
+//AABB
+//================================================================================
 function CollisionComponentAABB() {
     GameObjectComponent.call(this);
     this.type = CollisionComponentTypeEnum.aabb;
@@ -39,7 +44,7 @@ CollisionComponentAABB.prototype.getHeight = function() {
 CollisionComponentAABB.prototype.draw = function(canvasContext) {
     var width = this.getWidth();
     var height = this.getHeight();
-    canvasContext.strokeStyle = "yellow";
+    canvasContext.strokeStyle = "red";
     canvasContext.lineWidth = 1;
     canvasContext.strokeRect(this.center[0] - width/2, this.center[1] - height/2, width, height)
 };
@@ -94,11 +99,6 @@ CollisionComponentAABB.prototype.update = function(dt_s, obj = null) {
 
     this.setMinPt(minPt[0], minPt[1]);
     this.setMaxPt(maxPt[0], maxPt[1]);
-
-
-    // TODO possibly remove the computeBoundaries function
-    //this.computeBoundaries();
-
 };
 
 CollisionComponentAABB.prototype.setCenter = function(x, y) {
@@ -112,7 +112,18 @@ CollisionComponentAABB.prototype.setExtents = function(x, y) {
 };
 
 
-//CollisionComponentAABB.prototype.computeBoundaries = function() {
-//    this.setMinPt(this.center[0] - renderComp.getWidth() / 2, this.center[1] - renderComp.getHeight() / 2)
-//    this.setMaxPt(this.center[0] + renderComp.getWidth() / 2, this.center[1] + renderComp.getHeight() / 2)
-//}
+//================================================================================
+//OBB
+//================================================================================
+// You down wit' OBB? Yeah, you know me!
+
+function CollisionComponentOBB() {
+    GameObjectComponent.call(this);
+    this.type = CollisionComponentTypeEnum.obb;
+
+    this.center = vec2.create();
+
+    this.axes = [ vec2.create(), vec2.create() ];   // axes/basis vectors for the OBB's coordinate space
+
+    this.extents = [0.0, 0.0];  // extents in an OBB are the half-widths along each axis
+}

@@ -5,12 +5,13 @@ function AsteroidManager () {
     this.addComponent("asteroidPE", new ParticleEmitter());     // The Asteroid manager will control the particle emitter to put particles into the system
 
     this.maxAsteroids = 0;
-    this.activeAsteroids = 0;
+    this.activeAsteroids = { 2: 0, 1: 0, 0: 0};     // Dict of # of asteroids of each size
     this.initialAsteroids = 0;
     this.numFreeSlots = 0;  // Track the # of free Asteroid slots in the particle system    // TODO -- check, are we using this var?
 
     // Populate the command map (this.commandMap is part of the GameObject base class, which this Asteroid Manager derives from)
     this.commandMap["disableAndSpawnAsteroids"] = this.disableAndSpawnAsteroids;
+    this.commandMap["disableAsteroids"] = this.disableAsteroids;
 
     this.asteroidSizeMap = { 0: "astSmall",
                              1: "astMedium",
@@ -45,31 +46,34 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
         // Because the images are already loaded by the ImageManager (in the GameLogic object), all we have to do is reference it
         // Also note: this approach requires the ParticleSystem to be configured to create Particles with an image/sprite render component
         myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
-        this.activeAsteroids += 1;  // Track # of active asteroids
+        this.activeAsteroids[2] += 1;  // Track # of active asteroids (when an asteroid is initialized, it is size 2 (large))
         // NOTE: I don't like accessing gameLogic directly, but then again, we made it to simplify the handling of situations like this one (we need fixed_dt_s and no more elegant way than this to get it)
     }
 };
 
 AsteroidManager.prototype.update = function(dt_s, config = null) {
     // 4 is a magic number -- the # of asteroids that can possibly result from shooting 1 large asteroid
-    if (this.activeAsteroids < this.maxAsteroids - 4) {
+    var freeSpacesNeeded = this.activeAsteroids[2] * 4 + this.activeAsteroids[1] * 2;
+    var totalAsteroids = this.activeAsteroids[2] + this.activeAsteroids[1] + this.activeAsteroids[0];
+    if (this.maxAsteroids - totalAsteroids > freeSpacesNeeded) {
         var myEmitter = this.components["asteroidPE"];
 
         // TODO make a more robust random # generator for emitter position (e.g., use arena's dimensions, etc)
         var spawnPos = vec2.create();
-        vec2.set(spawnPos, Math.floor(Math.random() * 1080 + 100), Math.floor(Math.random() * 520 + 100));
+        vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
 
         while(!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
-            vec2.set(spawnPos, Math.floor(Math.random() * 1080 + 100), Math.floor(Math.random() * 520 + 100));
+            vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
         }
         myEmitter.setPosition(spawnPos[0], spawnPos[1]);
+        myEmitter.setVelocityRange(1.0, 5.0);   // TODO Confirm.. do I really need this here? I thought I only needed to set the velocity range one time, in the initialize function
 
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
                           "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ]
                         };
         myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
-        this.activeAsteroids += 1;  // Track # of active asteroids
+        this.activeAsteroids[2] += 1;  // Track # of active asteroids
     }
 
     for (var compName in this.components) {
@@ -106,11 +110,23 @@ AsteroidManager.prototype.draw = function(canvasContext) {
     myPS.draw(canvasContext);
 };
 
+// Note: Though disableAsteroids appears before disableAndSpawnAsteroids in the code, disableAndSpawnAsteroids was written before
+// disableAsteroids, chronologically. disableAsteroids takes in a list of asteroids to disable, to stay consistent with disableAndSpawnAsteroids, 
+// but looking back on it, I'm not sure why I pass in a list, and not just a single asteroid..
+AsteroidManager.prototype.disableAsteroids = function(params) {
+    for (var astToDisable of params.disableList) {
+        // Disable asteroid
+        astToDisable.disable();
+        this.activeAsteroids[astToDisable.size] -= 1;
+        // TODO trigger a particle explosion
+    }
+};
 
 // Disable passed-in asteroid(s), and spawn new ones
 AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
     // params is a dict object
 
+    // TODO figure out why I designed this function to work on a list of asteroids (when I'm passing in only 1 asteroid to disable)
     for (var astToDisable of params.disableList) {
         var myEmitter = this.components["asteroidPE"];
 
@@ -158,20 +174,21 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
                 // Emit a particle with the given config. Note that the config tells the particle which image to use for its render component
                 myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
                 // NOTE: I don't like accessing gameLogic directly, but then again, we made it to simplify the handling of situations like this one (we need fixed_dt_s and no more elegant way than this to get it)
-                this.activeAsteroids += 1;
+                this.activeAsteroids[newSize] += 1;
             }
         }
 
         // Disable asteroid
         astToDisable.disable();
-        this.activeAsteroids -= 1;
+        this.activeAsteroids[astToDisable.size] -= 1;
+        // TODO trigger a particle explosion
     }
 };
 
 
 AsteroidManager.prototype.executeCommand = function(cmdMsg, params) {
-    console.log("AsteroidManager executing command");
-    console.log(cmdMsg);
+    //console.log("AsteroidManager executing command");
+    //console.log(cmdMsg);
 
     // Call function
     // Note that this command passes a "params" arg in the cmdMsg payload, where other executeCommand functions (elsewhere in this codebase) do not..

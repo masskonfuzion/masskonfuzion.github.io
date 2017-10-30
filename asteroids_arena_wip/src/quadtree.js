@@ -1,5 +1,5 @@
-var QUADTREE_MAX_LEVELS = 5;        // Maximum quadtree depth
-var QUADTREE_MAX_OBJECTS = 10;      // Maximum number of objects per quadtree node
+var QUADTREE_MAX_LEVELS = 8;        // Maximum quadtree depth
+var QUADTREE_MAX_OBJECTS = 16;      // Maximum number of objects per quadtree node
 
 function QuadTree(depthLevel, bounds) {
     // The current depth level of this node (root is depth 0)

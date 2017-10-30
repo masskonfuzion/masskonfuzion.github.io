@@ -14,8 +14,8 @@ MessageQueue.prototype.registerListener = function(topic, handlerObj, handlerFun
     // Because of scoping issues and funky behavior with the "this" keyword,
     // this registration function takes in the "this" reference of the object
     // that owns the handler function
-    console.log("Entering registerListener. \"this\" = ");
-    console.log(this);
+    //console.log("Entering registerListener. \"this\" = ");
+    //console.log(this);
     // TODO make sure we're registering a reference to the listener object, rather than a copy of it
     listenerID = this._registeredListeners.length;  // e.g., When empty, id == 0
 
@@ -23,13 +23,13 @@ MessageQueue.prototype.registerListener = function(topic, handlerObj, handlerFun
         // Add a topic key if it doesn't exist in registeredListeners
         // (in Python, we'd do this with a defaultdict)
         this._registeredListeners[topic] = [];
-        console.log("Topic " + topic + " not previously present in registeredListeners. Added");
+        //console.log("Topic " + topic + " not previously present in registeredListeners. Added");
     }
 
     //this._registeredListeners[topic].push( handlerFunc );
     this._registeredListeners[topic].push( { "obj": handlerObj, "func": handlerFunc} );
 
-    console.log("Added listener " + handlerFunc.toString());
+    //console.log("Added listener " + handlerFunc.toString());
 };
 
 

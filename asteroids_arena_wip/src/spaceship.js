@@ -19,7 +19,7 @@ function Spaceship() {
     var gunPE = this.components["gunPE"];
     gunPE.setVelocityRange(300.0, 300.0);
     gunPE.setAngleRange(0, 0);     // degrees
-    gunPE.setMinColor(200, 200, 200);
+    gunPE.setMinColor(200, 200, 200);   // TODO make sure these colors actually get set... Right now, particle color isn't getting set if the emitParticle call does not pass in a config object...
     gunPE.setMaxColor(200, 200, 200);
     gunPE.setRateLimit(0.1);
     // NOTE: we don't set TTLRange here because the particles were already created and initialized (in an object pool); the autoExpire/TTL stuff is done there
@@ -118,8 +118,8 @@ Spaceship.prototype.update = function(dt_s, config = null) {
 
 // Override the class default executeCommand()
 Spaceship.prototype.executeCommand = function(cmdMsg, params) {
-    console.log("Spaceship executing command");
-    console.log(cmdMsg);
+    //console.log("Spaceship executing command");
+    //console.log(cmdMsg);
 
     // Call function
     this.commandMap[cmdMsg].call(this, params); // use call() because without it, we're losing our "this" reference (going from Spaceship to Object)
@@ -155,8 +155,8 @@ Spaceship.prototype.enableThrust = function() {
     var myThrustPE = this.components["thrustPE"];
     myThrustPE.setEnabled();                       // Enable the emitter
 
-    console.log("Spaceship thrust");
-    console.log(myPhysComp.acceleration);
+    //console.log("Spaceship thrust");
+    //console.log(myPhysComp.acceleration);
 };
 
 Spaceship.prototype.disableThrust = function() {
@@ -166,8 +166,8 @@ Spaceship.prototype.disableThrust = function() {
     var myThrustPE = this.components["thrustPE"];
     myThrustPE.setDisabled();                       // Disable the emitter
 
-    console.log("Spaceship thrust");
-    console.log(myPhysComp.acceleration);
+    //console.log("Spaceship thrust");
+    //console.log(myPhysComp.acceleration);
 };
 
 Spaceship.prototype.enableTurnLeft = function() {

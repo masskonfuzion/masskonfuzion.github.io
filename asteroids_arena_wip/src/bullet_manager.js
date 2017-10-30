@@ -75,8 +75,8 @@ BulletManager.prototype.postUpdate = function(dt_s, config=null) {
 
 
 BulletManager.prototype.executeCommand = function(cmdMsg, params) {
-    console.log("BulletManager executing command");
-    console.log(cmdMsg);
+    //console.log("BulletManager executing command");
+    //console.log(cmdMsg);
 
     // Call function
     // Note that this command passes a "params" arg in the cmdMsg payload, where other executeCommand functions (elsewhere in this codebase) do not..

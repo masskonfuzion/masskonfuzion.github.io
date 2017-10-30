@@ -58,7 +58,7 @@ GameLogic.prototype.initialize = function() {
     // ----- Initialize Asteroid Manager
     this.addGameObject("astMgr", new AsteroidManager());
     var astMgrRef = this.gameObjs["astMgr"];
-    astMgrRef.initialize(1, 16);
+    astMgrRef.initialize(1, 64);
 
     // ----- Initialize Arena
     this.addGameObject("arena", new Arena());
@@ -115,13 +115,13 @@ GameLogic.prototype.processMessages = function(dt_s) {
     //console.log('MessageQueue has ' + this.messageQueue.numItems() + ' items in it');
 
     while (!this.messageQueue._empty) {
-        console.log('Processing message');
+        //console.log('Processing message');
         // NOTE: If the queue is initialized with dummy values, then this loop will iterate over dummy values
         // It may be better to use a queue that is has an actual empty array when the queue is empty
         // That way, this loop will not run unless items actually exist in the queue
         var msg = this.messageQueue.dequeue();
 
-        console.log('Iterating over topic: ' + msg.topic);
+        //console.log('Iterating over topic: ' + msg.topic);
 
         for (var handler of this.messageQueue._registeredListeners[msg.topic]) {
             // TODO evaluate why we're storing the listeners as dicts {id: ref}; why not just use a list?
@@ -133,7 +133,7 @@ GameLogic.prototype.processMessages = function(dt_s) {
 
 GameLogic.prototype.handleKeyboardInput = function(evt) {
     // This function is the "quarterback" for handling user keyboard input
-    console.log(evt);
+    //console.log(evt);
 
     if (evt.type == "keydown") {
         this.handleKeyDownEvent(evt);
@@ -144,10 +144,10 @@ GameLogic.prototype.handleKeyboardInput = function(evt) {
 };
 
 GameLogic.prototype.handleKeyDownEvent = function(evt) {
-    console.log(this);
+    //console.log(this);
     // NOTE: We don't define these function on the prototype it inherited from; we define the function at the object level
     // Also note: Not relevant for this game, but this event-based approach can be used for many input schemes. e.g., for a fighting game, instead of directly enqueuing game commands, we could enqueue key presses with time stamps, to determine if a "special move combo" was entered
-    console.log('Key code ' + evt.keyCode + ' down');
+    //console.log('Key code ' + evt.keyCode + ' down');
 
     // NOTE: apparently, it is not possible to disable key repeat in HTML5/Canvas/JS..
     var cmdMsg = {};
@@ -199,7 +199,7 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
 
 
 GameLogic.prototype.handleKeyUpEvent = function(evt) {
-    console.log('Key code ' + evt.keyCode + ' up');
+    //console.log('Key code ' + evt.keyCode + ' up');
 
     if (evt.code == this.keyCtrlMap["thrust"]["code"]) {
         // User released thrust key
@@ -266,14 +266,14 @@ GameLogic.prototype.update = function(dt_s, config = null) {
 };
 
 GameLogic.prototype.actOnUserInputMessage = function(msg) {
-    console.log('actOnUserInputMessage: "this" =');
-    console.log(this);
+    //console.log('actOnUserInputMessage: "this" =');
+    //console.log(this);
     if (msg["topic"] == "UserInput") {
-        console.log('Command: Topic=' + msg["topic"] + ', Command=' + msg["command"]);
+        //console.log('Command: Topic=' + msg["topic"] + ', Command=' + msg["command"]);
 
         // TODO issue ship control commands from here (i.e. use command pattern)
         if (msg["command"] == 'ChangeCamera') {
-            console.log('Taking some action (TODO finish this)');
+            //console.log('Taking some action (TODO finish this)');
             // TODO probably enqueue a new message, with topic "GameCommand". The AI will also use this
         }
     }
@@ -281,17 +281,17 @@ GameLogic.prototype.actOnUserInputMessage = function(msg) {
 
 GameLogic.prototype.sendCmdToGameObj = function(msg) {
     // NOTE: because we have only 1 parameter to this function (really, to all registered listeners of a message queue), a ref to the object to which to send the cmd is included as part of the msg
-    console.log("sendCmdToGameObj: ");
-    console.log(msg);
+    //console.log("sendCmdToGameObj: ");
+    //console.log(msg);
 
     // Call the executeCommand() function with the given command (all GameObjs will have an executeCommand() function)
     msg["objRef"].executeCommand(msg["command"], msg["params"]);
 };
 
 GameLogic.prototype.processCollisionEvent = function(msg) {
-    console.log("Processing collision event message ");
-    console.log(msg);
-    console.log("Probably also enqueue a message to an explosion manager to trigger an explosion. Also, play a sound");
+    //console.log("Processing collision event message ");
+    //console.log(msg);
+    //console.log("Probably also enqueue a message to an explosion manager to trigger an explosion. Also, play a sound");
 
     var gameObjAType = msg.colliderA.parentObj.constructor.name;
     var gameObjBType = msg.colliderB.parentObj.constructor.name;
@@ -302,7 +302,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
     // Spaceship vs Asteroid
     if (gameObjAType == "Spaceship" && gameObjBType == "Asteroid" || gameObjBType == "Spaceship" && gameObjAType == "Asteroid") {
-        console.log("We have a collision between a spaceship and an asteroid")
+        //console.log("We have a collision between a spaceship and an asteroid")
 
         // Get a reference to the asteroid obj that is part of the collision, to include it as a param to the AsteroidManager, to disable the Asteroid and spawn new ones
         var asteroidRef = null;
@@ -317,6 +317,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         var fragRefDir = vec2.create();   // Create collision normal out here, and pass into the disableAndSpwan call (so we can get fancy with collision normals, e.g., with spaceship surfaces
 
         // Note: in params, disableList is a list so we can possibly disable multiple asteroids at once; numToSpawn is the # of asteroids to spawn for each disabled asteroid. Can maybe be controlled by game difficulty level.
+        // TODO rework GameCommand so that the caller doesn't need to know which object will handle the game command.  Have handlers register with the gameLogic obj, so the caller can simply put the GameCommand out
         cmdMsg = { "topic": "GameCommand",
                    "command": "disableAndSpawnAsteroids",
                    "objRef": this.gameObjs["astMgr"],
@@ -376,7 +377,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
         // Compute the spaceship's gun/emitter ID
         if (bulletRef.emitterID == spaceshipRef.components["gunPE"].emitterID) {
-            console.log("Skipping " + gameObjAType + "/" + gameObjBType + " collision because of self-shot prevention");
+            //console.log("Skipping " + gameObjAType + "/" + gameObjBType + " collision because of self-shot prevention");
         }
 
     }

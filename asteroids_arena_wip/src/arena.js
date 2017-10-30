@@ -106,3 +106,26 @@ Arena.prototype.containsPt = function(point) {
     }
     return true;
 }
+
+
+Arena.prototype.update = function(dt_s, config = null) {
+    // We'll check the locations of the asteroids in the gameLogic.gameObjs["astMgr"] (remember gameLogic is global, so we can just do it.. Globals FTW!)
+
+    var asteroidPS = gameLogic.gameObjs["astMgr"].components["asteroidPS"];
+
+    for (var asteroid of asteroidPS.particles) {
+        if (asteroid.alive) {
+            var astPos = asteroid.components["physics"].currPos;
+
+            if (!this.containsPt(astPos)) {
+                // TODO Rework GameCommand so that callers don't need to know which objects will handle the command (this is a duplicate listing of a task listed elsewhere in this engine; included here because it's relevant)
+                var cmdMsg = { "topic": "GameCommand",
+                               "command": "disableAsteroids",
+                               "objRef": gameLogic.gameObjs["astMgr"],
+                               "params": { "disableList": [ asteroid ] }
+                             };
+                gameLogic.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
+            }
+        }
+    }
+}
