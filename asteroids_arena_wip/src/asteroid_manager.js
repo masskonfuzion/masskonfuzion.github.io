@@ -36,11 +36,16 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
     myEmitter.setPosition(256, 256);
     myEmitter.registerParticleSystem(mySystem);
 
+    // Notes on bannedLocations:
+    //  - We're probably taking references to the ship's (or ships') position(s), which is what we want
+    //  - the 32 in the "radius" field is hard-coded // TODO don't hardcode; get radius from render component properties
+    var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
     for (var i = 0; i < initAsteroids; i++) {
         // Note the "funcCalls" property - "params" is a list that, when passed into a function.apply() call, is "splatted" into individual parameters, similar to Python *args
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
-                          "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ]
+                          "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ],
+                          "bannedLocations": bannedLocations
                         };
         // Emit a particle with the given config. Note that the config tells the particle which image to use for its render component
         // Because the images are already loaded by the ImageManager (in the GameLogic object), all we have to do is reference it
@@ -65,12 +70,16 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
         while(!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
             vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
         }
+        // NOTE: the asteroid spawning in this function will occur when asteroids are destroyed because they left the arena
+        // TODO add some kind of level manager? (i.e. max # of asteroids that will be spawned in this level? Or, otherwise make this game a pure deathmatch, ending when ships are destroyed? Or, just play for time? I don't know what this game should be)
         myEmitter.setPosition(spawnPos[0], spawnPos[1]);
         myEmitter.setVelocityRange(1.0, 5.0);   // TODO Confirm.. do I really need this here? I thought I only needed to set the velocity range one time, in the initialize function
 
+        var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
-                          "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ]
+                          "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ],
+                          "bannedLocations": bannedLocations
                         };
         myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
         this.activeAsteroids[2] += 1;  // Track # of active asteroids
@@ -123,6 +132,7 @@ AsteroidManager.prototype.disableAsteroids = function(params) {
 };
 
 // Disable passed-in asteroid(s), and spawn new ones
+// TODO consider splitting into separate disable() and spawn() functions? (requires enqueueing 2 messages, instead of 1, when an asteroid is destroyed and a new one needs to be spawned)
 AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
     // params is a dict object
 
@@ -143,6 +153,12 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         var launchData = [ { "ang": glMatrix.toRadian(45), "dir": vec2.create(), "velMult": 2 / gameLogic.fixed_dt_s, "posMult": 40},
                            { "ang": glMatrix.toRadian(-45), "dir": vec2.create(), "velMult": 2 / gameLogic.fixed_dt_s, "posMult": 40} ];
 
+        // Disable asteroid
+        astToDisable.disable();
+        this.activeAsteroids[astToDisable.size] -= 1;
+
+        var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
+        // TODO trigger a particle explosion
         if (astToDisable.size > 0) {
             for (var i = 0; i < params.numToSpawn; i++) {
                 var newSize = astToDisable.size - 1;
@@ -150,7 +166,8 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
 
                 var configObj = { "renderCompType": "image",
                                   "imageRef": game.imgMgr.imageMap[ newSizeStr ].imgObj,
-                                  "funcCalls": [ { "func": Asteroid.prototype.setSize, "params": [newSize] } ]
+                                  "funcCalls": [ { "func": Asteroid.prototype.setSize, "params": [newSize] } ],
+                                  "bannedLocations": bannedLocations
                                 };
                 // Because the images are already loaded by the ImageManager (in the GameLogic object), all we have to do is reference it
                 // Also note: this approach requires the ParticleSystem to be configured to create Particles with an image/sprite render component
@@ -178,10 +195,6 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
             }
         }
 
-        // Disable asteroid
-        astToDisable.disable();
-        this.activeAsteroids[astToDisable.size] -= 1;
-        // TODO trigger a particle explosion
     }
 };
 

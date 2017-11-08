@@ -105,6 +105,49 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
                 this.setRandomParticleColor(particle);
             }
 
+            if (config.hasOwnProperty("bannedLocations")) {
+                // Prevent particle from spawning within "radius" units of "position"
+                var correctedPos = vec2.create();
+                var offsetAngle = 0;    // degrees
+                var offsetVec = vec2.create();
+                
+                var emitterPosIsValid = false;
+                for (var bannedLoc of config["bannedLocations"]) {
+                    emitterPosIsValid = vec2.squaredDistance(this.position, bannedLoc["position"]) > bannedLoc["radius"]*bannedLoc["radius"];
+                    if (!emitterPosIsValid) {
+                        break;
+                    }
+                }
+
+
+                while (!emitterPosIsValid) {
+                    if (offsetAngle >= 360) {
+                        // If we've gone in a full circle and still not found a valid spawn location, give up and use the original (TODO maybe try some different methods?)
+                        break;  // out of while loop
+                    }
+
+                    vec2.set(offsetVec, Math.cos(glMatrix.toRadian(offsetAngle)), Math.sin(glMatrix.toRadian(offsetAngle)));
+
+                    vec2.copy(correctedPos, this.position);
+                    vec2.scaleAndAdd(correctedPos, correctedPos, offsetVec, 36);    // TODO don't hardcode the scale amount -- include an "offset" amount, maybe in the config object; i.e. we should set the correctedPos one time, and test it against all bannedLocations
+
+                    for (var bannedLoc of config["bannedLocations"]) {
+                        emitterPosIsValid = vec2.squaredDistance(correctedPos, bannedLoc["position"]) <= bannedLoc["radius"]*bannedLoc["radius"];
+                        if (!emitterPosIsValid) {
+                            offsetAngle += 45;
+                            break;  // out of for loop
+                        }
+                    }
+
+                    // If we get here and emitterPosIsValid == true, then we can call setPosAndVel on the particle's physics component, with our corrected position
+                    if (emitterPosIsValid) {
+                        physComp.setPosAndVel(correctedPos[0], correctedPos[1], launchVel[0], launchVel[1], dt_s);
+                        break;  // out of while loop
+                    }
+                }
+
+            }
+
             // Do any "post-processing" using any funcCalls defined in the config object
             if (config.hasOwnProperty("funcCalls")) {
                 for (funcCallDef of config["funcCalls"]) {

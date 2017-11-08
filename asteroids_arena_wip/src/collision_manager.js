@@ -110,3 +110,51 @@ CollisionManager.prototype.isColliding_AABB_AABB = function(objA, objB) {
 
     return true;
 };
+
+
+// Return true if the given aabb and line segment intersect; false otherwise
+CollisionManager.prototype.isColliding_AABB_LineSeg = function(box, seg) {
+    // Implementing a hacked up version of the separating axis theorem (2D simplified version)
+    // This function is good only for boolean true/false testing.
+
+    var segMidPt = vec2.create();
+    vec2.set(segMidPt, (seg.sPt[0] + seg.ePt[0]) * .5, (seg.sPt[1] + seg.ePt[1]) * .5);
+
+    var segHalfVec = vec2.create();
+    vec2.sub(segHalfVec, seg.ePt, segMidPt);    // A half-length vector from the midpoint to the endpoint
+
+    // Translate the box and the segment to the origin (i.e. move the segment midpoint by the amounts of the box center's position. This effectively treats the box center as though it's the origin, and the segment midpoint is translated relative to that origin)
+    vec2.sub(segMidPt, segMidPt, box.center);
+
+    if ( Math.abs(segMidPt[0]) > box.extents[0] + Math.abs(segHalfVec[0]) )
+        return false;
+
+    if ( Math.abs(segMidPt[1]) > box.extents[1] + Math.abs(segHalfVec[1]) )
+        return false;
+
+    // If we're here, then by process of elimination, the segment and box are intersecting
+    return true;
+};
+
+
+// Return true 2 line segments are intersecting; false otherwise
+CollisionManager.prototype.isColliding_LineSeg_LineSeg = function(objA, objB) {    // Given 2 line segments, where objA contains points A,B, and objB contains points C,D, the algorithm is as follows:
+    var v1 = vec2.create();
+    var v2 = vec2.create();
+    var n = vec2.create();
+
+    // First, compute n perpendicular to CD (objB's vector)
+    vec2.sub(n, objB.ePt, objB.sPt);
+    vec2.set(n, -n[1], n[0]);   // This is equivalent to rotating +90 deg (e.g. [1,0] -> [0, 1]; and [0,1] -> [-1, 0])
+    vec2.normalize(n, n);
+
+    vec2.sub(v1, objB.sPt, objA.sPt);   // v1 = C - A
+    vec2.sub(v2, objA.ePt, objA.sPt);   // v2 = B - A
+
+    // Compute the paramater, t, on the line segment given by L(t) = A + t(B - A).
+    // if 0 <= t <= 1, then the segments are intersecting (and t can be used to compute the intersection)
+    var t = vec2.dot(n, v1) / vec2.dot(n, v2);
+
+    return (t >= 0 && t <= 1);  // TODO use a float eq
+
+};

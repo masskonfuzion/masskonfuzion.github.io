@@ -43,11 +43,14 @@ Spaceship.prototype.constructor = Spaceship;
 
 Spaceship.prototype.initialize = function(configObj) {
     // configObj is a dict object 
+    // TODO test for existence of configObj and its properties
     this.components["render"].setImgObj(configObj["imgObj"]);
+    this.components["physics"].setPosition(configObj["initialPos"][0], configObj["initialPos"][1]);
     this.components["collision"].update(0);    // Do an update to force the collision component to compute its boundaries
 
     // NOTE: can't set particle emitter IDs in the constructor because the objectID for this object has not been set at that point
     this.components["gunPE"].setEmitterID(this.constructor.name + this.objectID.toString() + "." + "gunPE");
+
 };
 
 // Override the default update()

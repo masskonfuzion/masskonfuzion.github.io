@@ -1,7 +1,8 @@
 // Global scope
 var CollisionComponentTypeEnum = { "circle": 0,
                                    "aabb": 1,
-                                   "obb": 2
+                                   "obb": 2,
+                                   "lineseg": 3
                                  };
 
 
@@ -116,6 +117,7 @@ CollisionComponentAABB.prototype.setExtents = function(x, y) {
 //OBB
 //================================================================================
 // You down wit' OBB? Yeah, you know me!
+// TODO finish OBB
 
 function CollisionComponentOBB() {
     GameObjectComponent.call(this);
@@ -127,3 +129,30 @@ function CollisionComponentOBB() {
 
     this.extents = [0.0, 0.0];  // extents in an OBB are the half-widths along each axis
 }
+
+
+
+//================================================================================
+//Line segment
+//================================================================================
+function CollisionComponentLineSeg() {
+    GameObjectComponent.call(this);
+    this.type = CollisionComponentTypeEnum.lineseg;
+
+    // TODO decide: do we want to track center/extent AND start/end points? On one hand, that could be a lot of data to store; on the other hand, we're doing that with the AABBs (storing center/extents and also min/max points)
+    //this.center = vec2.create();
+    //this.extents = [0.0];   // The extent in line segment is the half-width from center to each endpoint
+    //// NOTE: storing a list here for consistency with the other collision component types
+
+    // could use annoying ternary here, but eh
+    this.sPt = vec2.create();
+    this.ePt = vec2.create();
+}
+
+CollisionComponentLineSeg.prototype = Object.create(GameObjectComponent.prototype);
+CollisionComponentLineSeg.prototype.constructor = CollisionComponentLineSeg;
+
+CollisionComponentLineSeg.prototype.setEndPoints = function(sx, sy, ex, ey) {
+    vec2.set(this.sPt, sx, sy);
+    vec2.set(this.ePt, ex, ey);
+};
