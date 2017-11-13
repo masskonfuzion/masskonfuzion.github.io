@@ -2,7 +2,8 @@
 var CollisionComponentTypeEnum = { "circle": 0,
                                    "aabb": 1,
                                    "obb": 2,
-                                   "lineseg": 3
+                                   "lineseg": 3,
+                                   "group": 4
                                  };
 
 
@@ -32,6 +33,14 @@ CollisionComponentAABB.prototype.setMinPt = function(x, y) {
 CollisionComponentAABB.prototype.setMaxPt = function(x, y) {
     this.maxPt[0] = x;
     this.maxPt[1] = y;
+};
+
+CollisionComponentAABB.prototype.getMinPt = function() {
+    return this.minPt;  // Should i return a clone of the minPt vector?
+};
+
+CollisionComponentAABB.prototype.getMaxPt = function() {
+    return this.maxPt;
 };
 
 CollisionComponentAABB.prototype.getWidth = function() {
@@ -100,6 +109,8 @@ CollisionComponentAABB.prototype.update = function(dt_s, obj = null) {
 
     this.setMinPt(minPt[0], minPt[1]);
     this.setMaxPt(maxPt[0], maxPt[1]);
+
+    this.setExtents((maxPt[0] - minPt[0]) * 0.5, (maxPt[1] - minPt[1]) * 0.5);
 };
 
 CollisionComponentAABB.prototype.setCenter = function(x, y) {
@@ -155,4 +166,70 @@ CollisionComponentLineSeg.prototype.constructor = CollisionComponentLineSeg;
 CollisionComponentLineSeg.prototype.setEndPoints = function(sx, sy, ex, ey) {
     vec2.set(this.sPt, sx, sy);
     vec2.set(this.ePt, ex, ey);
+};
+
+// Some helper functions that are probably more useful in the context of inserting line segments into a quadtree (or other spatial subdivision object) than anything else
+// These are candidates for incorporation into a base class for colliders
+CollisionComponentLineSeg.prototype.getMaxPt = function() {
+    return vec2.fromValues( Math.max(this.sPt[0], this.ePt[0]), Math.max(this.sPt[1], this.ePt[1]) );
+};
+
+CollisionComponentLineSeg.prototype.getMinPt = function() {
+    return vec2.fromValues( Math.min(this.sPt[0], this.ePt[0]), Math.min(this.sPt[1], this.ePt[1]) );
+};
+
+CollisionComponentLineSeg.prototype.getWidth = function() {
+    return Math.abs(this.ePt[0] - this.sPt[0]);
+};
+
+CollisionComponentLineSeg.prototype.getHeight = function() {
+    return Math.abs(this.ePt[1] - this.sPt[1]);
+};
+
+
+//================================================================================
+//Collision component group
+//================================================================================
+
+function CollisionComponentGroup() {
+    GameObjectComponent.call(this);
+    this.type = CollisionComponentTypeEnum.group;
+    this.groupItems = [];
+}
+
+CollisionComponentGroup.prototype = Object.create(GameObjectComponent.prototype);
+CollisionComponentGroup.prototype.constructor = CollisionComponentGroup;
+
+CollisionComponentGroup.prototype.getMinPt = function() {
+    var i = 0;
+    if (this.groupItems) {
+        var minPt = this.groupItems[i].getMinPt();
+
+        for (i = 1; i < this.groupItems.length; i++) {
+            var cmp = this.groupItems[i].getMinPt();
+            minPt[0] = Math.min(minPt[0], cmp[0]);
+            minPt[1] = Math.min(minPt[1], cmp[1]);
+        }
+        return minPt;
+        
+    } else {
+        return vec2.create();
+    }
+};
+
+CollisionComponentGroup.prototype.getMaxPt = function() {
+    var i = 0;
+    if (this.groupItems) {
+        var maxPt = this.groupItems[i].getMaxPt();
+
+        for (i = 1; i < this.groupItems.length; i++) {
+            var cmp = this.groupItems[i].getMaxPt();
+            maxPt[0] = Math.max(maxPt[0], cmp[0]);
+            maxPt[1] = Math.max(maxPt[1], cmp[1]);
+        }
+        return maxPt;
+        
+    } else {
+        return vec2.create();
+    }
 };

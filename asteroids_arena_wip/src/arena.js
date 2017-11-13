@@ -12,6 +12,7 @@ function Arena () {
     // TODO add parameters later, to control how the arena is constructed; e.g., load from files or something
     this.addComponent( "render", new RenderComponentGroup() );
     this.lineSegments = [];     // Line segment info, e.g. dir & normal
+    this.boundaryColliders = [];
 
 }
 
@@ -34,6 +35,12 @@ Arena.prototype.initialize = function () {
     rcg.addGroupItem(lineTop);
     this.addLineSegment(lineTop.startPt, lineTop.endPt);
 
+    var lineTopCollider = new CollisionComponentLineSeg();
+    lineTopCollider.setEndPoints(lineTop.startPt[0], lineTop.startPt[1], lineTop.endPt[0], lineTop.endPt[1]);
+    lineTopCollider.parentObj = this;   // Setting parentObj should happen in a function of Arena, like addCollider or something
+    gameLogic.collisionMgr.addCollider(lineTopCollider);    // Add arena boundary colliders to the collision manager
+
+
     var lineRight = new RenderComponentLine();
     lineRight.setStartPt(1280,0);
     lineRight.setEndPt(1280, 720);
@@ -41,6 +48,12 @@ Arena.prototype.initialize = function () {
     lineRight.setColor(0, 128, 255);
     rcg.addGroupItem(lineRight);
     this.addLineSegment(lineRight.startPt, lineRight.endPt);
+
+    var lineRightCollider = new CollisionComponentLineSeg();
+    lineRightCollider.setEndPoints(lineRight.startPt[0], lineRight.startPt[1], lineRight.endPt[0], lineRight.endPt[1]);
+    lineRightCollider.parentObj = this;
+    gameLogic.collisionMgr.addCollider(lineRightCollider);
+
  
     // Note: "Bot" looks like the bottom, but has + coord values, because Y coordinates increase down the screen in Canvas
     var lineBot = new RenderComponentLine();
@@ -51,6 +64,12 @@ Arena.prototype.initialize = function () {
     rcg.addGroupItem(lineBot);
     this.addLineSegment(lineBot.startPt, lineBot.endPt);
 
+    var lineBotCollider = new CollisionComponentLineSeg();
+    lineBotCollider.setEndPoints(lineBot.startPt[0], lineBot.startPt[1], lineBot.endPt[0], lineBot.endPt[1]);
+    lineBotCollider.parentObj = this;
+    gameLogic.collisionMgr.addCollider(lineBotCollider);
+
+
     var lineLeft = new RenderComponentLine();
     lineLeft.setStartPt(0, 720);
     lineLeft.setEndPt(0, 0);
@@ -58,6 +77,12 @@ Arena.prototype.initialize = function () {
     lineLeft.setColor(0, 128, 255);
     rcg.addGroupItem(lineLeft);
     this.addLineSegment(lineLeft.startPt, lineLeft.endPt);
+
+    var lineLeftCollider = new CollisionComponentLineSeg();
+    lineLeftCollider.setEndPoints(lineLeft.startPt[0], lineLeft.startPt[1], lineLeft.endPt[0], lineLeft.endPt[1]);
+    lineLeftCollider.parentObj = this;
+    gameLogic.collisionMgr.addCollider(lineLeftCollider);
+
 
 };
 
@@ -113,19 +138,19 @@ Arena.prototype.update = function(dt_s, config = null) {
 
     var asteroidPS = gameLogic.gameObjs["astMgr"].components["asteroidPS"];
 
-    for (var asteroid of asteroidPS.particles) {
-        if (asteroid.alive) {
-            var astPos = asteroid.components["physics"].currPos;
+    //for (var asteroid of asteroidPS.particles) {
+    //    if (asteroid.alive) {
+    //        var astPos = asteroid.components["physics"].currPos;
 
-            if (!this.containsPt(astPos)) {
-                // TODO Rework GameCommand so that callers don't need to know which objects will handle the command (this is a duplicate listing of a task listed elsewhere in this engine; included here because it's relevant)
-                var cmdMsg = { "topic": "GameCommand",
-                               "command": "disableAsteroids",
-                               "objRef": gameLogic.gameObjs["astMgr"],
-                               "params": { "disableList": [ asteroid ] }
-                             };
-                gameLogic.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
-            }
-        }
-    }
+    //        if (!this.containsPt(astPos)) {
+    //            // TODO Rework GameCommand so that callers don't need to know which objects will handle the command (this is a duplicate listing of a task listed elsewhere in this engine; included here because it's relevant)
+    //            var cmdMsg = { "topic": "GameCommand",
+    //                           "command": "disableAsteroids",
+    //                           "objRef": gameLogic.gameObjs["astMgr"],
+    //                           "params": { "disableList": [ asteroid ] }
+    //                         };
+    //            gameLogic.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
+    //        }
+    //    }
+    //}
 }

@@ -159,6 +159,7 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
         this.keyCtrlMap["thrust"]["state"] = true;  // TODO figure out if we're using state here, and possibly get rid of it. We seem to not be processing the key states anywhere; instead, we enqueue commands immediately on state change
 
         // Note that the payload of messages in the queue can vary depending on context. At a minimum, the message MUST have a topic
+        // TODO Rework GameCommand so that callers don't need to know which objects will handle the command (i.e., remove objRef)
         // TODO keep a reference to the player-controlled obj, instead of hard-coding?
         cmdMsg = { "topic": "GameCommand",
                    "command": "setThrustOn",
@@ -299,11 +300,10 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
     var gameObjAType = msg.colliderA.parentObj.constructor.name;
     var gameObjBType = msg.colliderB.parentObj.constructor.name;
 
-    // TODO Possibly restructure collision event if/then cases into their own individual function calls
+    // TODO Possibly restructure collision event if/then cases into their own individual function calls; maybe use function callbacks
 
     var cmdMsg;
 
-    // Spaceship vs Asteroid
     if (gameObjAType == "Spaceship" && gameObjBType == "Asteroid" || gameObjBType == "Spaceship" && gameObjAType == "Asteroid") {
         //console.log("We have a collision between a spaceship and an asteroid")
 
@@ -382,9 +382,31 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         if (bulletRef.emitterID == spaceshipRef.components["gunPE"].emitterID) {
             //console.log("Skipping " + gameObjAType + "/" + gameObjBType + " collision because of self-shot prevention");
         }
+    } else if (gameObjAType == "Arena" && gameObjBType == "Bullet" || gameObjBType == "Bullet" && gameObjAType == "Arena") {
+        // PSYCH!!! We don't test for bullet/arena collision.
+        // See BulletManager; we test for containment of the bullet within the arena. If it leaves, then we destroy it
+    } else if (gameObjAType == "Arena" && gameObjBType == "Asteroid" || gameObjBType == "Asteroid" && gameObjAType == "Arena") {
+        var arenaRef = null;
+        var asteroidRef = null;
 
+        if (gameObjAType == "Arena") {
+            arenaRef = msg.colliderA.parentObj;
+            asteroidRef = msg.colliderB.parentObj;
+        } else {
+            arenaRef = msg.colliderB.parentObj;
+            asteroidRef = msg.colliderA.parentObj;
+        }
+
+        var cmdMsg = { "topic": "GameCommand",
+                       "command": "disableAsteroids",
+                       "objRef": this.gameObjs["astMgr"],
+                       "params": { "disableList": [ asteroidRef ] }
+                     };
+        this.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
+    } else if (gameObjAType == "Arena" && gameObjBType == "Spaceship" || gameObjBType == "Spaceship" && gameObjAType == "Arena") {
     }
 
     // TODO add AABB/Line Segment collision test (i.e., for asteroid/bullet/spaceship leaves arena)? NOTE: right now, bullet/arena boundary testing is done.. elsewhere. find it
+    // TODO also.... how are we disabling bullets that leave the arena?
 };
 

@@ -8,6 +8,8 @@ function CollisionManager() {
     this.colliders = {};    // The key of the dict will be the object ID of the object this collision component belongs to
     this.objectIDToAssign = -1;  // probably belongs in the base class.
 
+    // The CollisionManager owns the quadtree. It also holds references to registered collision components,
+    // so that in each frame, the CollisionManager can pass colliders into the quadtree
     this.quadTree = null;
 }
 
@@ -18,13 +20,13 @@ CollisionManager.prototype.initialize = function(initialRect) {
     // Initialize a QuadTree, starting at level/depth 0
     // NOTE: The max # of levels in the quadtree is defined in quadtree.js
     this.quadTree = new QuadTree(0, initialRect); // width/height should match canvas width/height (maybe just use the canvas object?)
-}
+};
 
 CollisionManager.prototype.addCollider = function(collider) {
     this.objectIDToAssign += 1;
     collider.objectID = this.objectIDToAssign;
     this.colliders[this.objectIDToAssign] = collider;
-}
+};
 
 CollisionManager.prototype.removeCollider = function(id) {
     if (id in this.colliders && this.colliders.hasOwnProperty(id)) {
@@ -33,7 +35,7 @@ CollisionManager.prototype.removeCollider = function(id) {
         // NOTE: might not want to keep this log message long-term, but during development/testing, it's ok
         console.log("Attempted to remove from CollisionManager.colliders an item that does not exist");
     }
-}
+};
 
 CollisionManager.prototype.update = function(dt_s, configObj) {
 
@@ -96,7 +98,22 @@ CollisionManager.prototype.isColliding = function(objA, objB) {
     if (objA.type == CollisionComponentTypeEnum.aabb && objB.type == CollisionComponentTypeEnum.aabb) {
         return this.isColliding_AABB_AABB(objA, objB);
     }
-}
+
+    // LineSeg-AABB
+    if (objA.type == CollisionComponentTypeEnum.aabb && objB.type == CollisionComponentTypeEnum.lineseg) {
+        return this.isColliding_AABB_LineSeg(objA, objB);
+    }
+
+    if (objA.type == CollisionComponentTypeEnum.lineseg && objB.type == CollisionComponentTypeEnum.aabb) {
+        return this.isColliding_AABB_LineSeg(objB, objA);
+    }
+
+    // Segment-Segment
+    if (objA.type == CollisionComponentTypeEnum.lineseg && objB.type == CollisionComponentTypeEnum.lineseg) {
+        return this.isColliding_LineSeg_LineSeg(objA, objB);
+    }
+
+};
 
 
 CollisionManager.prototype.isColliding_AABB_AABB = function(objA, objB) {
@@ -118,7 +135,7 @@ CollisionManager.prototype.isColliding_AABB_LineSeg = function(box, seg) {
     // This function is good only for boolean true/false testing.
 
     var segMidPt = vec2.create();
-    vec2.set(segMidPt, (seg.sPt[0] + seg.ePt[0]) * .5, (seg.sPt[1] + seg.ePt[1]) * .5);
+    vec2.set(segMidPt, (seg.sPt[0] + seg.ePt[0]) * 0.5, (seg.sPt[1] + seg.ePt[1]) * 0.5);
 
     var segHalfVec = vec2.create();
     vec2.sub(segHalfVec, seg.ePt, segMidPt);    // A half-length vector from the midpoint to the endpoint

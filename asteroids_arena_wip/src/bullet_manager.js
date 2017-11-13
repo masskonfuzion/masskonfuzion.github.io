@@ -46,6 +46,7 @@ BulletManager.prototype.draw = function(canvasContext) {
 
 // Run additional update logic after the update function finishes
 // (This function is called from update()
+// NOTE: We use this approach to avoid putting bullet colliders into the quadtree
 BulletManager.prototype.postUpdate = function(dt_s, config=null) {
     // Enqueue a message to instruct the Bullet Management system to disable a bullet object if certain conditions are met
     for (var bullet of this.components["gunPS"].particles) {

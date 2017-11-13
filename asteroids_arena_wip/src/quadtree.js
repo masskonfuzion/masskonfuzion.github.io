@@ -34,7 +34,8 @@ QuadTree.prototype.clear = function() {
 };
 
 
-// Split the given node 4 subnodes (i.e., populate this node's children
+// Split the given node 4 subnodes
+// Assuming x increasing right on screen, y increasing down on screen: quadrant 0 is top-right; 1 is top-left; 2 is bottom-left; 3 is bottom right
 QuadTree.prototype.split = function() {
     var subWidth = Math.floor(this.bounds.width / 2);
     var subHeight = Math.floor(this.bounds.height / 2);
@@ -46,55 +47,60 @@ QuadTree.prototype.split = function() {
 };
 
 
-// Determine which node an object belongs in. -1 means the object does not
-// completely fit within a child node and is part of the parent node
-// "obj" will be an object that has an interface to get minimum and maximum x and y coordinates
-QuadTree.prototype.getIndex = function(obj) {
-    var index = -1;
+// Determine which node(s) an object belongs in.
+// "indices" is a list of all nodes an object fits into (i.e., if an object spans multiple nodes,
+// it will be placed in all of them)
+// "obj" must be an object that has an interface to get minimum and maximum x and y coordinates
+QuadTree.prototype.getIndices = function(obj) {
+    var indices = [];
 
     var midPointX = this.bounds.x + (this.bounds.width / 2);
     var midPointY = this.bounds.y + (this.bounds.height / 2);
 
-    var objWidth = obj.maxPt[0] - obj.minPt[0];             // The code I copied this from had obj.width; but my objects don't have a width property, so I'm hacking one in
-    var objHeight = obj.maxPt[1] - obj.minPt[1];
+    var objHalfWidth = obj.getWidth() / 2;      // The code I copied this from had obj.width; but my objects don't have a width property, so I'm hacking one in
+    var objHalfHeight = obj.getHeight() / 2;
 
-    var objX = obj.minPt[0] + Math.floor(objWidth / 2);
-    var objY = obj.minPt[1] + Math.floor(objHeight / 2);
+    // TODO smarten up this objCenterX and objCenterY calculation. Use center points if we have them; else compute them
+    var minPt = obj.getMinPt();
+    var maxPt = obj.getMaxPt();
 
-    var fullyInLeftHalf = objX + objWidth < midPointX;
-    var fullyInRightHalf = objX > midPointX;
-    var fullyInTopHalf = objY + objHeight < midPointY;
-    var fullyInBottomHalf = objY > midPointY;
+    var touchesQuad0 = maxPt[0] >= midPointX && minPt[1] <= midPointY;
+    var touchesQuad1 = minPt[0] <= midPointX && minPt[1] <= midPointY;
+    var touchesQuad2 = minPt[0] <= midPointX && maxPt[1] >= midPointY;
+    var touchesQuad3 = maxPt[0] >= midPointX && maxPt[1] >= midPointY;
 
-    if (fullyInLeftHalf) {
-        if (fullyInTopHalf) {
-            index = 1;
-        } else if (fullyInBottomHalf) {
-            index = 2;
-        }
-    } else if (fullyInRightHalf) {
-        if (fullyInTopHalf) {
-            index = 0;
-        } else if (fullyInBottomHalf) {
-            index = 3;
-        }
+    if (touchesQuad0) {
+        indices.push(0);
     }
-    return index;
+
+    if (touchesQuad1) {
+        indices.push(1);
+    }
+
+    if (touchesQuad2) {
+        indices.push(2);
+    }
+
+    if (touchesQuad3) {
+        indices.push(3);
+    }
+
+
+    return indices;
 };
 
 
 // Insert the object into the QuadTree
 QuadTree.prototype.insert = function(obj) {
-    // If this node already has existing children, then look in them to get the index
-    var index;
+    // If this node already has existing children (i.e. has been split before), then determine which one of them to put the input obj into
+    var indices;
     if (this.nodes[0]) {
-        index = this.getIndex(obj);
+        indices = this.getIndices(obj);
 
-        // If we got a valid index in the child node, then insert the obj at that index (i.e., in the proper quadrant)
-        if (index != -1) {
+        for (var index of indices) {
             this.nodes[index].insert(obj);
-            return;
         }
+        return;
     }
 
     this.gameObjs.push(obj);
@@ -105,15 +111,12 @@ QuadTree.prototype.insert = function(obj) {
                 this.split();
             }
 
-            var i = this.gameObjs.length - 1;   // Start at the end and work our way to the beginning (because pop() removes the last item from the array)
-            while (i >= 0) {
-                index = this.getIndex(this.gameObjs[i]);
-                if (index != -1) {
-                    // If we can find a subnode in which to put the given object, then put it in the subnode
-                    this.nodes[index].insert(this.gameObjs.pop());   // pop() removes from the end of the array
-                    i = this.gameObjs.length - 1;
-                } else {
-                    i--;
+            while (this.gameObjs.length > 0) {
+                var objToInsert = this.gameObjs.pop();
+                indices = this.getIndices(objToInsert);
+                for (var index of indices) {
+                    // Put the given object in the appropriate subnode(s) of this node
+                    this.nodes[index].insert(objToInsert);   // pop() removes from the end of the array
                 }
             }
         } else {
@@ -128,10 +131,13 @@ QuadTree.prototype.insert = function(obj) {
 // Retrieve a list of all objects, from all nodes, that could potentially collide with the given object
 // Note: Pass in an array object, so that it can be populated recursively
 QuadTree.prototype.retrieve = function(returnObjs, queryObj) {
-    var index = this.getIndex(queryObj);
+    var indices = this.getIndices(queryObj);
 
-    if (index != -1 && this.nodes[0] !== null) {
-        this.nodes[index].retrieve(returnObjs, queryObj);
+    // If nodes[0] exists, then all 4 subnodes exist. Traverse them, looking for potential collision candidates
+    if (this.nodes[0] !== null) {
+        for (var index of indices) {
+            this.nodes[index].retrieve(returnObjs, queryObj);
+        }
     }
 
     // If the object does not fit cleanly into this node's children, or if this node is a leaf, then add objects from this node to the return list
