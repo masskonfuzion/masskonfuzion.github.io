@@ -1,3 +1,7 @@
+var SpaceshipAbleStateEnum = { "disabled": 0,
+                               "enabled": 1,
+                               "spawning": 2
+                             };
 function Spaceship() {
     // Inherit GameObject properties, includinga components dict
     GameObject.call(this);
@@ -26,6 +30,7 @@ function Spaceship() {
 
 
     this.fireAState = false;        // To be used in AI/logic or whatever, to tell the game that this spaceship is firing its guns
+    this.ableState = SpaceshipAbleStateEnum.enabled
 
     // Populate the command map (this.commandMap is part of the GameObject base class, which this Spaceship derives from)
     this.commandMap["setThrustOn"] = this.enableThrust;
@@ -63,6 +68,8 @@ Spaceship.prototype.update = function(dt_s, config = null) {
             // NOTE: I'm debating whether or not I need the ParticleEmitter class. Or, I'm debating whether I can possibly keep it simple or I'll need to create a base class/subclass hierarchy
             // Determine the configuration object to send into update()
             var updateConfigObj = null;
+
+            // Do some preliminary setup work before calling update() on the following components
             switch(compName) {
                 case "thrustPE":
                     // Could wrap all this in a function

@@ -382,10 +382,10 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         if (bulletRef.emitterID == spaceshipRef.components["gunPE"].emitterID) {
             //console.log("Skipping " + gameObjAType + "/" + gameObjBType + " collision because of self-shot prevention");
         }
-    } else if (gameObjAType == "Arena" && gameObjBType == "Bullet" || gameObjBType == "Bullet" && gameObjAType == "Arena") {
+    } else if (gameObjAType == "Arena" && gameObjBType == "Bullet" || gameObjBType == "Arena" && gameObjAType == "Bullet") {
         // PSYCH!!! We don't test for bullet/arena collision.
         // See BulletManager; we test for containment of the bullet within the arena. If it leaves, then we destroy it
-    } else if (gameObjAType == "Arena" && gameObjBType == "Asteroid" || gameObjBType == "Asteroid" && gameObjAType == "Arena") {
+    } else if (gameObjAType == "Arena" && gameObjBType == "Asteroid" || gameObjBType == "Arena" && gameObjAType == "Asteroid") {
         var arenaRef = null;
         var asteroidRef = null;
 
@@ -403,10 +403,35 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                        "params": { "disableList": [ asteroidRef ] }
                      };
         this.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
-    } else if (gameObjAType == "Arena" && gameObjBType == "Spaceship" || gameObjBType == "Spaceship" && gameObjAType == "Arena") {
+    } else if (gameObjAType == "Arena" && gameObjBType == "Spaceship" || gameObjBType == "Arena" && gameObjAType == "Spaceship") {
+        var arenaRef = null;
+        var spaceshipRef = null;
+
+        if (gameObjAType == "Arena") {
+            arenaRef = msg.colliderA.parentObj;
+            spaceshipRef = msg.colliderB.parentObj;
+        } else {
+            arenaRef = msg.colliderB.parentObj;
+            spaceshipRef = msg.colliderA.parentObj;
+        }
+        // TODO implement a "spawning" state -- maybe render some cool VFX and do a countdown or something
+
+        // TODO make a more robust random # generator for emitter position (e.g., use arena's dimensions, etc) (also -- need to "robustify" the one in AsteroidManager
+        var spawnPos = vec2.create();
+        vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
+
+        while(!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
+            vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
+        }
+
+        // For now, just cheaply teleport to a new location; set velocity to (0,0) and heading/angle to 0;
+        spaceshipRef.components["physics"].setPosition(spawnPos[0], spawnPos[1]);
+        spaceshipRef.components["physics"].setAcceleration(0, 0);
+        spaceshipRef.components["physics"].angle = 0.0;
+
     }
 
-    // TODO add AABB/Line Segment collision test (i.e., for asteroid/bullet/spaceship leaves arena)? NOTE: right now, bullet/arena boundary testing is done.. elsewhere. find it
-    // TODO also.... how are we disabling bullets that leave the arena?
+    // Note that for asteroids and the spaceship, we're doing AABB-vs-line segment tests against the arena (to determine containment)
+    // But for bullets, we're doing simple containment tests. This is because bullets are small, and the containment test looks convincing; but for spaceships/asteroids, the containment test allows too much of the body to cross the boundary line before triggering a collision (because the containment test deals only with the center point of potentially large objects)
 };
 
