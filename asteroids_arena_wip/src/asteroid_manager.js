@@ -39,7 +39,7 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
     // Notes on bannedLocations:
     //  - We're probably taking references to the ship's (or ships') position(s), which is what we want
     //  - the 32 in the "radius" field is hard-coded // TODO don't hardcode; get radius from render component properties
-    var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
+    var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 100 } ];
     for (var i = 0; i < initAsteroids; i++) {
         // Note the "funcCalls" property - "params" is a list that, when passed into a function.apply() call, is "splatted" into individual parameters, similar to Python *args
         var configObj = { "renderCompType": "image",

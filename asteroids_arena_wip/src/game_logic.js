@@ -416,18 +416,8 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         }
         // TODO implement a "spawning" state -- maybe render some cool VFX and do a countdown or something
 
-        // TODO make a more robust random # generator for emitter position (e.g., use arena's dimensions, etc) (also -- need to "robustify" the one in AsteroidManager
-        var spawnPos = vec2.create();
-        vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
-
-        while(!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
-            vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
-        }
-
-        // For now, just cheaply teleport to a new location; set velocity to (0,0) and heading/angle to 0;
-        spaceshipRef.components["physics"].setPosition(spawnPos[0], spawnPos[1]);
-        spaceshipRef.components["physics"].setAcceleration(0, 0);
-        spaceshipRef.components["physics"].angle = 0.0;
+        // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
+        this.spawnAtNewLocation(spaceshipRef, 75);
 
     }
 
@@ -435,3 +425,76 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
     // But for bullets, we're doing simple containment tests. This is because bullets are small, and the containment test looks convincing; but for spaceships/asteroids, the containment test allows too much of the body to cross the boundary line before triggering a collision (because the containment test deals only with the center point of potentially large objects)
 };
 
+
+// Set queryObj at a new location
+// Pick a random spawn location that is:
+// - inside the arena, and
+// - at least some distance, dist, away from any nearby 
+
+// Preconditions:
+// - queryObj MUST have a physics component and a collider component
+// - queryObj's collider must have a center point (i.e., the collider is an AABB, circle, etc.)
+GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
+
+    var spawnPosIsValid = false;
+
+    while (!spawnPosIsValid) {
+
+        var spawnPos = vec2.create();
+        vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));   // TODO don't hardcode these values. Instead, maybe take in min/max x/y, based on arena dimensions
+
+        if (!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
+            // Start back at the top of the loop if the randomly generated coords are not in bounds
+            continue;
+        }
+
+        // Set the position of the query object (e.g. a Spaceship)
+        var physComp = queryObj.components["physics"];
+        physComp.setPosition(spawnPos[0], spawnPos[1]);
+        physComp.setAcceleration(0, 0);
+        physComp.angle = 0.0;
+
+        var collComp = queryObj.components["collision"];
+        collComp.update(0); // call update() to recompute bounding geometry
+
+        // Get the list of all nearby objects (i.e., nearby colliders)
+        var nearObjs = [];
+        this.collisionMgr.quadTree.retrieve(nearObjs, collComp);
+
+        // Here, we'll be lazy and simply compute the squared distance from collComp center to nearObj center
+        // A more robust test would be to compute the nearest point on collComp to nearObj
+        var failedNearbyTest = false;
+        for (var nearObj of nearObjs) {
+            var poi = vec2.create();    // poi means point of interest. If the nearObj has a center point, then poi is the center. Otherwise, if nearObj has a linear component collider(e.g. line segment), then poi is a point on that linear component
+
+            if (nearObj.hasOwnProperty("center")) {
+                vec2.copy(poi, nearObj.center);
+            } else if (nearObj.hasOwnProperty("sPt") && nearObj.hasOwnProperty("ePt")) {
+                // poi is the projection of the queryObj's center point on to the line segment
+                var segVec = vec2.create();
+                vec2.sub(segVec, nearObj.ePt, nearObj.sPt);
+
+                var direction = vec2.create();
+                vec2.normalize(direction, segVec);
+
+                var segToQueryObj = vec2.create();
+                vec2.sub(segToQueryObj, collComp.center, nearObj.sPt);
+
+                var t = vec2.dot(segToQueryObj, direction);
+                vec2.scaleAndAdd(poi, nearObj.sPt, segVec, t);
+
+            } // Can add more cases, e.g. if line/ray, we'll only have a point and a dir
+            
+            var sqDist = vec2.squaredDistance(collComp.center, poi);
+
+            if (sqDist <= cushionDist * cushionDist) {
+                failedNearbyTest = true;
+                break
+            }
+        }
+
+        if (!failedNearbyTest) {
+            spawnPosIsValid = true;
+        }
+    }
+}
