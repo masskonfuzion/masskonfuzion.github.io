@@ -7,6 +7,7 @@ function ParticleSystem(ctorFunc=null) {
 
     this.particles = [];
     this.lastUsedIndex = -1;
+    this.collisionMgrRef = null;
 
     this.particleCtor = null;
     if (ctorFunc === null) {
@@ -63,7 +64,10 @@ ParticleSystem.prototype.draw = function(canvasContext) {
 
 
 ParticleSystem.prototype.update = function(dt_s, config = null) {
+    var transfer = config ? config : {};    // ternary: transfer = config if config exists already; else, transfer is an empty object
+    transfer["collisionMgrRef"] = this.collisionMgrRef;
+
     for (var particle of this.particles) {
-        particle.update(dt_s);
+        particle.update(dt_s, transfer);
     }
 };

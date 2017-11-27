@@ -164,9 +164,9 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
 
         // Note: we are able to add collision objects to the collision manager at this point, because the particles being managed by this emitter are already fully formed objects
         if ("collision" in particle.components) {
-            // Get a reference to the GameLogic object's collision manager.  The GameLogic object is in global scope, so we can simply access it from here
-            // TODO probably should also add a check to make sure the GameLogic object has a collision manager. If it doesn't, then we can't add a collider, and should log an error
-            var collMgr = gameLogic.collisionMgr;
+            // Get a reference to the GameLogic object's collision manager via my registered particle system's collisionMgrRef property
+            // NOTE: This assumes that we've registered to this emitter a particle system that has a non-null collisionMgrRef
+            var collMgr = this.registeredPS.collisionMgrRef;
             particle.components["collision"].update(0);     // Do a trivial update to make the collider compute its size and such
             collMgr.addCollider(particle.components["collision"]);
         }

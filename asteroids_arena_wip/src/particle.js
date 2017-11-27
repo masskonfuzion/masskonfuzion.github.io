@@ -51,7 +51,7 @@ Particle.prototype.update = function(dt_s, config = null) {
         if (this.autoExpire) {
             this.ttl -= dt_s;
             if (this.ttl < 0.0) {
-                this.disable();
+                this.disable(config);
             }
         }
     }
@@ -59,17 +59,18 @@ Particle.prototype.update = function(dt_s, config = null) {
 
 
 // Disable particle
-Particle.prototype.disable = function() {
+Particle.prototype.disable = function(transfer = null) {
     this.alive = false;
 
     // Check if this particle has a collision component, and if so, if the collision component has an objectID > -1.
     if("collision" in this.components && this.components.hasOwnProperty("collision")) {
         var myCollider = this.components["collision"];
-        // If so, then also check if the GameLogic object has a collision manager that is managing the particle's collision component
-        if (gameLogic.collisionMgr) {
-            // remember, gameLogic is a global-scope var set in index.html
-            var collMgr = gameLogic.collisionMgr;
+        // If so, then also check if the transfer object has a collision manager reference that was passed in (i.e. collision mgr belongs to game logic)
+        if (transfer && transfer.hasOwnProperty("collisionMgrRef")) {
+            var collMgr = transfer["collisionMgrRef"];
             collMgr.removeCollider(myCollider.objectID);
+        } else {
+            throw new Error("Attempting to disable particle with collision component, but no collision manager is available");
         }
     }
 }

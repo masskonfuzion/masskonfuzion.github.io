@@ -4,8 +4,6 @@ function GameLogic() {
     this.gameObjs = {};
 	this.keyCtrlMap = {};   // keyboard key state handling (keeping it simple)
     this.messageQueue = null;
-    this.timer = null;
-    this.fixed_dt_s = 0.015;
     this.objectIDToAssign = -1;  // probably belongs in the base class.
 }
 
@@ -22,12 +20,12 @@ GameLogic.prototype.initialize = function() {
     this.messageQueue.registerListener('GameCommand', this, this.sendCmdToGameObj);
     this.messageQueue.registerListener('CollisionEvent', this, this.processCollisionEvent);
 
-    this.timer = new Timer();
 
     // ----- Initialize collision manager
     // NOTE: Collision Manager is initialized first, so that other items can access it and register their collision objects with it
     this.collisionMgr = new CollisionManager();
     this.collisionMgr.initialize( {"x":0, "y":0, "width": game.canvas.width, "height": game.canvas.height} );     // width/height should match canvas width/height (maybe just use the canvas object?) .. Or.... should the quadtree size match the arena size (which is larger than the canvas)?
+    this.collisionMgr.parentObj = this; // TODO make a cleaner way to set parentObj (maybe make an addCollisionManager wrapper function)
 
     // ----- Initialize thrust/rocket particle system
     this.addGameObject("thrustPS", new ParticleSystem());
@@ -88,6 +86,7 @@ GameLogic.prototype.setAngularVel = function(shipRef, angVel) {
 };
 
 GameLogic.prototype.draw = function(canvasContext) {
+    canvasContext.save();
     canvasContext.setTransform(1,0,0,1,0,0);    // Reset transformation (similar to OpenGL loadIdentity() for matrices)
 
     // Clear the canvas (note that the game application object is global)
@@ -110,6 +109,7 @@ GameLogic.prototype.draw = function(canvasContext) {
             }
         }
     }
+    canvasContext.restore();
 };
 
 
@@ -159,11 +159,10 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
         this.keyCtrlMap["thrust"]["state"] = true;  // TODO figure out if we're using state here, and possibly get rid of it. We seem to not be processing the key states anywhere; instead, we enqueue commands immediately on state change
 
         // Note that the payload of messages in the queue can vary depending on context. At a minimum, the message MUST have a topic
-        // TODO Rework GameCommand so that callers don't need to know which objects will handle the command (i.e., remove objRef)
         // TODO keep a reference to the player-controlled obj, instead of hard-coding?
         cmdMsg = { "topic": "GameCommand",
                    "command": "setThrustOn",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -173,7 +172,7 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
         // User pressed the fire A key (e.g. primary weapon)
         cmdMsg = { "topic": "GameCommand",
                    "command": "setFireAOn",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -184,7 +183,7 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
         this.keyCtrlMap["turnLeft"]["state"] = true;
         cmdMsg = { "topic": "GameCommand",
                    "command": "setTurnLeftOn",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -194,7 +193,7 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
         this.keyCtrlMap["turnRight"]["state"] = true;
         cmdMsg = { "topic": "GameCommand",
                    "command": "setTurnRightOn",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -211,7 +210,7 @@ GameLogic.prototype.handleKeyUpEvent = function(evt) {
 
         cmdMsg = { "topic": "GameCommand",
                    "command": "setThrustOff",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -221,7 +220,7 @@ GameLogic.prototype.handleKeyUpEvent = function(evt) {
         // User pressed the fire A key (e.g. primary weapon)
         cmdMsg = { "topic": "GameCommand",
                    "command": "setFireAOff",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -232,7 +231,7 @@ GameLogic.prototype.handleKeyUpEvent = function(evt) {
         this.keyCtrlMap["turnLeft"]["state"] = false;
         cmdMsg = { "topic": "GameCommand",
                    "command": "setTurnOff",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -243,7 +242,7 @@ GameLogic.prototype.handleKeyUpEvent = function(evt) {
         this.keyCtrlMap["turnRight"]["state"] = false;
         cmdMsg = { "topic": "GameCommand",
                    "command": "setTurnOff",
-                   "objRef": this.gameObjs["ship"],
+                   "targetObj": this.gameObjs["ship"],
                    "params": null
                  };
         this.messageQueue.enqueue(cmdMsg);
@@ -289,7 +288,7 @@ GameLogic.prototype.sendCmdToGameObj = function(msg) {
     //console.log(msg);
 
     // Call the executeCommand() function with the given command (all GameObjs will have an executeCommand() function)
-    msg["objRef"].executeCommand(msg["command"], msg["params"]);
+    msg["targetObj"].executeCommand(msg["command"], msg["params"]);
 };
 
 GameLogic.prototype.processCollisionEvent = function(msg) {
@@ -320,10 +319,10 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         var fragRefDir = vec2.create();   // Create collision normal out here, and pass into the disableAndSpwan call (so we can get fancy with collision normals, e.g., with spaceship surfaces
 
         // Note: in params, disableList is a list so we can possibly disable multiple asteroids at once; numToSpawn is the # of asteroids to spawn for each disabled asteroid. Can maybe be controlled by game difficulty level.
-        // TODO rework GameCommand so that the caller doesn't need to know which object will handle the game command.  Have handlers register with the gameLogic obj, so the caller can simply put the GameCommand out
+        // TODO rework GameCommand so that the caller doesn't need to know which object will handle the game command.  Have handlers register with the GameLogic obj, so the caller can simply put the GameCommand out
         cmdMsg = { "topic": "GameCommand",
                    "command": "disableAndSpawnAsteroids",
-                   "objRef": this.gameObjs["astMgr"],
+                   "targetObj": this.gameObjs["astMgr"],
                    "params": { "disableList": [ asteroidRef ],
                                "numToSpawn": 2,
                                "fragRefDir": fragRefDir }
@@ -348,7 +347,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         // Note: in params, disableList is a list so we can possibly disable multiple asteroids at once; numToSpawn is the # of asteroids to spawn for each disabled asteroid. Can maybe be controlled by game difficulty level.
         cmdMsg = { "topic": "GameCommand",
                    "command": "disableAndSpawnAsteroids",
-                   "objRef": this.gameObjs["astMgr"],
+                   "targetObj": this.gameObjs["astMgr"],
                    "params": { "disableList": [ asteroidRef ],
                                "numToSpawn": 2,
                                "fragRefDir": fragRefDir }
@@ -358,7 +357,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
         cmdMsg = { "topic": "GameCommand",
                    "command": "disableBullet",
-                   "objRef": this.gameObjs["bulletMgr"],
+                   "targetObj": this.gameObjs["bulletMgr"],
                    "params": { "bulletToDisable": bulletRef }
                  };
 
@@ -399,7 +398,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
         var cmdMsg = { "topic": "GameCommand",
                        "command": "disableAsteroids",
-                       "objRef": this.gameObjs["astMgr"],
+                       "targetObj": this.gameObjs["astMgr"],
                        "params": { "disableList": [ asteroidRef ] }
                      };
         this.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
@@ -443,7 +442,7 @@ GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
         var spawnPos = vec2.create();
         vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));   // TODO don't hardcode these values. Instead, maybe take in min/max x/y, based on arena dimensions
 
-        if (!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
+        if (!this.gameObjs["arena"].containsPt(spawnPos)) {
             // Start back at the top of the loop if the randomly generated coords are not in bounds
             continue;
         }

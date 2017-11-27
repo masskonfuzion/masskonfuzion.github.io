@@ -4,6 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Asteroids Arena</title>
+
+    <!-- define a font style, for rendering text with a custom font -->
+    <style>
+    @font-face {
+        font-family: 'AstronBoy';
+        src: url('assets/fonts/astron_boy.ttf');
+    }
+    </style>
 </head>
 
 <script src="src/gl-matrix.js" type="text/javascript"></script>
@@ -14,6 +22,9 @@
 <script src="src/image_manager.js" type="text/javascript"></script>
 <script src="src/game_object.js" type="text/javascript"></script>
 <script src="src/game_object_component.js" type="text/javascript"></script>
+<script src="src/game_state_base.js" type="text/javascript"></script>
+<script src="src/game_state_manager.js" type="text/javascript"></script>
+<script src="src/game_state_playing.js" type="text/javascript"></script>
 <script src="src/game_logic.js" type="text/javascript"></script>
 <script src="src/physics_component.js" type="text/javascript"></script>
 <script src="src/render_component.js" type="text/javascript"></script>
@@ -33,12 +44,13 @@
 <script type="text/javascript">
 var game = new GameApplication(800, 450);   // Global scope
 var frameID = null;
-var gameLogic = new GameLogic();
+var gameStatePlaying = new GameStatePlaying();
+var gameStateMgr = new GameStateManager();
 
 
 // Trap keyboard events and forward them to game logic
 function keyboardHandler(evt) {
-    gameLogic.handleKeyboardInput(evt);
+    gameStateMgr.currState().handleKeyboardInput(evt);
 }
 
 function mainEntryPoint() {
@@ -58,8 +70,8 @@ function mainEntryPoint() {
     game.imgMgr.addImgToMap("astMedium", imgAsset_astMedium);
     game.imgMgr.addImgToMap("astSmall", imgAsset_astSmall);
 
-    // NOTE: all image loading must be done before initializing the gameLogic object
-    gameLogic.initialize();
+    // NOTE: all image loading must be done before initializing any GameStates (and/or any GameLogic objects) that might use images
+    gameStateMgr.changeState(gameStatePlaying);
 
     start();
 }
@@ -95,24 +107,31 @@ function stop()
 function mainloop(timestamp)
 {
     // NOTE requestAnimationFrame passes in a timestamp into the function being called
-    gameLogic.timer.doFrameTimer(timestamp);
 
-	while (gameLogic.timer.elapsed >= gameLogic.fixed_dt_s) {
-	    gameLogic.processMessages(gameLogic.fixed_dt_s);
-        // Note: lurking in the gameLogic update() is a collisionMgr update that will attempt (but be blocked) to enqueue multiple collision events.
-		gameLogic.update(gameLogic.fixed_dt_s);
-		gameLogic.timer.elapsed -= gameLogic.fixed_dt_s;
+    var currState = gameStateMgr.currState();
+
+    game.timer.doFrameTimer(timestamp);
+	while (game.timer.elapsed >= game.fixed_dt_s) {
+        currState.preRender(game.context, game.fixed_dt_s);
+
+		game.timer.elapsed -= game.fixed_dt_s;
 	}
 
-    drawStuff(game.context);    // game is global, so technically, we don't HAVE to pass the canvas context, but eh whatever. Could pass in the canvas here (you can get the context from the canvas obj). But SHOULD we?
+    //TODO delete
+    //drawStuff(game.context);    // game is global, so technically, we don't HAVE to pass the canvas context, but eh whatever. Could pass in the canvas here (you can get the context from the canvas obj). But SHOULD we?
+
+    currState.render(game.context, game.fixed_dt_s);
+    currState.postRender(game.context, game.fixed_dt_s);
+
     frameID = requestAnimationFrame(mainloop);
 
 }
 
-function drawStuff(canvasContext)
-{
-    gameLogic.draw(canvasContext);
-}
+// TODO delete
+//function drawStuff(canvasContext)
+//{
+//    gameLogic.draw(canvasContext);
+//}
 
 </script>
 

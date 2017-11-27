@@ -6,6 +6,9 @@ function GameApplication(xSize=512, ySize=512) {
     this.canvas = null;
     this.context = null;
     this.imgMgr = null;
+
+    this.timer = null;
+    this.fixed_dt_s = 0.015;
 }
 
 GameApplication.prototype.initialize = function() {
@@ -20,5 +23,7 @@ GameApplication.prototype.initialize = function() {
     this.context.font = '30px serif';
     this.context.fillStyle = 'white';
     this.context.fillText('If you see only this, something is probably wrong ;-)', this.canvas.width / 8, this.canvas.height / 8);
+
+    this.timer = new Timer();
 
 }

@@ -78,12 +78,12 @@ CollisionManager.prototype.update = function(dt_s, configObj) {
             // determine whether to add this object pair to the final potential collision set
             if (this.isColliding(potentialCollisions[key]["objA"], potentialCollisions[key]["objB"])) {
                 //console.log("Collision detected!");
-                // Enqueue a message to the gameLogic object with information about the collision, for the gameLogic to decide how to respond
+                // Enqueue a collision event message for the GameLogic object to handle
                 var collisionMsg = { "topic": "CollisionEvent",
                                      "colliderA": potentialCollisions[key]["objA"],
                                      "colliderB": potentialCollisions[key]["objB"]
                                    };
-                gameLogic.messageQueue.enqueue(collisionMsg);
+                this.parentObj.messageQueue.enqueue(collisionMsg);
             }
         }
     }

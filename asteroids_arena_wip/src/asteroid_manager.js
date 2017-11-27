@@ -28,6 +28,7 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
     this.maxAsteroids = maxAsteroids;   // NOTE: we could also just get the length of the particle system's array; consider removing this.maxAsteroids?
     var mySystem = this.components["asteroidPS"];
     mySystem.initialize(maxAsteroids);
+    mySystem.collisionMgrRef = this.parentObj.collisionMgr;     // TODO maybe make a wrapper function, to make a cleaner assignment of collisionMgrRef
 
     var myEmitter = this.components["asteroidPE"];
     myEmitter.setVelocityRange(1.0, 5.0);
@@ -39,7 +40,7 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
     // Notes on bannedLocations:
     //  - We're probably taking references to the ship's (or ships') position(s), which is what we want
     //  - the 32 in the "radius" field is hard-coded // TODO don't hardcode; get radius from render component properties
-    var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 100 } ];
+    var bannedLocations = [ {"position": this.parentObj.gameObjs["ship"].components["physics"].currPos, "radius": 100 } ];
     for (var i = 0; i < initAsteroids; i++) {
         // Note the "funcCalls" property - "params" is a list that, when passed into a function.apply() call, is "splatted" into individual parameters, similar to Python *args
         var configObj = { "renderCompType": "image",
@@ -50,9 +51,8 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
         // Emit a particle with the given config. Note that the config tells the particle which image to use for its render component
         // Because the images are already loaded by the ImageManager (in the GameLogic object), all we have to do is reference it
         // Also note: this approach requires the ParticleSystem to be configured to create Particles with an image/sprite render component
-        myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
+        myEmitter.emitParticle(game.fixed_dt_s, configObj);
         this.activeAsteroids[2] += 1;  // Track # of active asteroids (when an asteroid is initialized, it is size 2 (large))
-        // NOTE: I don't like accessing gameLogic directly, but then again, we made it to simplify the handling of situations like this one (we need fixed_dt_s and no more elegant way than this to get it)
     }
 };
 
@@ -67,7 +67,7 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
         var spawnPos = vec2.create();
         vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
 
-        while(!gameLogic.gameObjs["arena"].containsPt(spawnPos)) {
+        while(!this.parentObj.gameObjs["arena"].containsPt(spawnPos)) {
             vec2.set(spawnPos, Math.floor(Math.random() * 600 + 100), Math.floor(Math.random() * 250 + 100));
         }
         // NOTE: the asteroid spawning in this function will occur when asteroids are destroyed because they left the arena
@@ -75,13 +75,13 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
         myEmitter.setPosition(spawnPos[0], spawnPos[1]);
         myEmitter.setVelocityRange(1.0, 5.0);   // TODO Confirm.. do I really need this here? I thought I only needed to set the velocity range one time, in the initialize function
 
-        var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
+        var bannedLocations = [ {"position": this.parentObj.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
                           "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ],
                           "bannedLocations": bannedLocations
                         };
-        myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
+        myEmitter.emitParticle(game.fixed_dt_s, configObj);
         this.activeAsteroids[2] += 1;  // Track # of active asteroids
     }
 
@@ -125,7 +125,8 @@ AsteroidManager.prototype.draw = function(canvasContext) {
 AsteroidManager.prototype.disableAsteroids = function(params) {
     for (var astToDisable of params.disableList) {
         // Disable asteroid
-        astToDisable.disable();
+        // NOTE: Another (better?) way to particles access to the collision manager that manages their colliders is to simply give the particles a reference to the particle system they belong to
+        astToDisable.disable( {"collisionMgrRef": this.components["asteroidPS"].collisionMgrRef} ); 
         this.activeAsteroids[astToDisable.size] -= 1;
         // TODO trigger a particle explosion
     }
@@ -149,15 +150,15 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         vec2.normalize(astVelDir, astVel);
 
         // Note: there should be as many launchData items as params.numToSpawn  // TODO maybe launchData should be passed in?
-        // NOTE: we/re dividing the velocity multiplier by gameLogic.fixed_dt_s because in this computation, we're dealing with velocity over 1 frame; the physicsComponent's setPosAndVel function assumes we're working with velocity over a full second, so we're dividing by dt, to compensate
-        var launchData = [ { "ang": glMatrix.toRadian(45), "dir": vec2.create(), "velMult": 2 / gameLogic.fixed_dt_s, "posMult": 40},
-                           { "ang": glMatrix.toRadian(-45), "dir": vec2.create(), "velMult": 2 / gameLogic.fixed_dt_s, "posMult": 40} ];
+        // NOTE: we/re dividing the velocity multiplier by game.fixed_dt_s because in this computation, we're dealing with velocity over 1 frame; the physicsComponent's setPosAndVel function assumes we're working with velocity over a full second, so we're dividing by dt, to compensate
+        var launchData = [ { "ang": glMatrix.toRadian(45), "dir": vec2.create(), "velMult": 2 / game.fixed_dt_s, "posMult": 40},
+                           { "ang": glMatrix.toRadian(-45), "dir": vec2.create(), "velMult": 2 / game.fixed_dt_s, "posMult": 40} ];
 
         // Disable asteroid
-        astToDisable.disable();
+        astToDisable.disable({"collisionMgrRef": this.components["asteroidPS"].collisionMgrRef});
         this.activeAsteroids[astToDisable.size] -= 1;
 
-        var bannedLocations = [ {"position": gameLogic.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
+        var bannedLocations = [ {"position": this.parentObj.gameObjs["ship"].components["physics"].currPos, "radius": 50 } ];
         // TODO trigger a particle explosion
         if (astToDisable.size > 0) {
             for (var i = 0; i < params.numToSpawn; i++) {
@@ -189,8 +190,7 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
                 myEmitter.setAngleRange(0, 0);  // i.e., launch in exactly the direction of launchDir
 
                 // Emit a particle with the given config. Note that the config tells the particle which image to use for its render component
-                myEmitter.emitParticle(gameLogic.fixed_dt_s, configObj);
-                // NOTE: I don't like accessing gameLogic directly, but then again, we made it to simplify the handling of situations like this one (we need fixed_dt_s and no more elegant way than this to get it)
+                myEmitter.emitParticle(game.fixed_dt_s, configObj);
                 this.activeAsteroids[newSize] += 1;
             }
         }

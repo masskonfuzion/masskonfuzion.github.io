@@ -21,6 +21,7 @@ BulletManager.prototype.initialize = function(maxBullets) {
     // maxBullets is the maximum number of Bullets that could be in play
     var mySystem = this.components["gunPS"];
     mySystem.initialize(maxBullets);
+    mySystem.collisionMgrRef = this.parentObj.collisionMgr;     // TODO maybe make a wrapper function, to make a cleaner assignment of collisionMgrRef
 
     // NOTE: Chances are the BulletManager does not have its own emitter; various other things will have emitters (e.g. spaceships). However, the manager will be able to expire bullets when they meet certain conditions (e.g. off-screen, collide with something)
 };
@@ -56,21 +57,11 @@ BulletManager.prototype.postUpdate = function(dt_s, config=null) {
         }
 
         var physComp = bullet.components["physics"];
-        // TODO replace game.xSize and game.ySize (which are the viewport dimensions) with the arena's dimensions. There should be a test for containment
-        // TODO Also, rename game.[xy]Size to something more descriptive? Like, window/viewport size?
-
-        if (!gameLogic.gameObjs["arena"].containsPt(physComp.currPos)) {
-                cmdMsg = { "topic": "GameCommand",
-                           "command": "disableBullet",
-                           "objRef": this,
-                           "params": { "bulletToDisable": bullet }
-                         };
-                // Remember, gameLogic is accessible globally
-                gameLogic.messageQueue.enqueue(cmdMsg);
+        if (!this.parentObj.gameObjs["arena"].containsPt(physComp.currPos)) {
+                this.disableBullet({ "bulletToDisable": bullet });
             }
 
-
-        // NOTE: Look to the collision manager for another case: bullet collides with object. It will enqueue a message from there
+        // NOTE: This postUpdate routine handles only bullets leaving the arena. Look to the collision manager for another case: bullet collides with object. 
     }
 };
 
@@ -82,7 +73,7 @@ BulletManager.prototype.executeCommand = function(cmdMsg, params) {
     // Call function
     // Note that this command passes a "params" arg in the cmdMsg payload, where other executeCommand functions (elsewhere in this codebase) do not..
     this.commandMap[cmdMsg].call(this, params); // use call() because without it, we're losing our "this" reference (going from BulletManager to Object)
-}
+};
 
 
 BulletManager.prototype.disableBullet = function(dictObj) {
@@ -90,8 +81,9 @@ BulletManager.prototype.disableBullet = function(dictObj) {
     
     var bullet = dictObj["bulletToDisable"];
     bullet.alive = false;
-    bullet.disable();   // call into the bullet's parent class (i.e., Particle's) disable function
+    // NOTE: Another (better?) way to particles access to the collision manager that manages their colliders is to simply give the particles a reference to the particle system they belong to
+    bullet.disable( {"collisionMgrRef": this.components["gunPS"].collisionMgrRef} );   // call into the bullet's parent class (i.e., Particle's) disable function
                         // TODO - move this to Trello: Possibly move collider disable logic from base Particle class into specific Bullet & Asteroid classes? Maybe?
-}
+};
 
 
