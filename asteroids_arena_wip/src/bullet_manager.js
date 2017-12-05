@@ -8,7 +8,6 @@ function BulletManager () {
 
     this.maxBullets = 0;
     this.initialBullets = 0;
-    this.numFreeSlots = 0;  // Track the # of free Bullet slots in the particle system
 
     // Populate the command map (this.commandMap is part of the GameObject base class, which this Bullet Manager derives from)
     this.commandMap["disableBullet"] = this.disableBullet;

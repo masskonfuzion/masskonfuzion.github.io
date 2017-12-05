@@ -172,6 +172,6 @@ CollisionManager.prototype.isColliding_LineSeg_LineSeg = function(objA, objB) { 
     // if 0 <= t <= 1, then the segments are intersecting (and t can be used to compute the intersection)
     var t = vec2.dot(n, v1) / vec2.dot(n, v2);
 
-    return (t >= 0 && t <= 1);  // TODO use a float eq
+    return (t >= 0 && t <= 1);
 
 };
