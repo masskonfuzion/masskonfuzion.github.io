@@ -7,7 +7,6 @@ function Arena () {
 
     // In this early version, the arena will simply be a rectangle. We can use AABBs for the arena's boundaries (which will be 2 vertical and 2 horizontal)
     // If we continue into later versions, we should have a general polygonal shape; maybe use the separating axis theorem
-    // TODO - implement hierarchical render objects, and hierarchical collision objects (see, e.g. falldown webgl?)
 
     // TODO add parameters later, to control how the arena is constructed; e.g., load from files or something
     this.addComponent( "render", new RenderComponentGroup() );
@@ -25,7 +24,7 @@ Arena.prototype.initialize = function () {
     // Add individual render components to the group
     // NOTE: I know this is verbose (I could write one-liners here, if the ctors had default params), but I want the ctors in this framework to do as _little_ as possible
 
-    // TODO/NOTE: We're initializing the lines in "clockwise" winding (relative to the computer screen). This is so that, for any line segment in the arena's polygon, a positive rotation the direction of the line segemnt (i.e., the direction is the vector taken from startPt towards endPt) will be "inside" the polygon
+    // NOTE: We're initializing the lines in "clockwise" winding (relative to the computer screen). This is so that, for any line segment in the arena's polygon, a positive rotation the direction of the line segemnt (i.e., the direction is the vector taken from startPt towards endPt) will be "inside" the polygon
 
     var lineTop = new RenderComponentLine();
     lineTop.setStartPt(0,0);
@@ -92,7 +91,6 @@ Arena.prototype.draw = function(canvasContext) {
 
 // A function to store line segment data for the arena.
 // This function has no error checking, so it's up to the programmer to avoid adding duplicate data or doing other silly stuff
-// TODO decide whether to implement a line segment collision component (to test for actual intersections/collisions with boundaries), or keep the simple objects here, to be used only for testing containment
 // NOTE: the line seg collision component would work better for, e.g. AABB vs Line Segment tests, whereas the containment test would work for small particles (the smaller, the more believable)
 Arena.prototype.addLineSegment = function(startPt, endPt) {
     // Compute the direction of the line segment

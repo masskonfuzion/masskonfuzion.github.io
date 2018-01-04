@@ -60,7 +60,6 @@ QuadTree.prototype.getIndices = function(obj) {
     var objHalfWidth = obj.getWidth() / 2;      // The code I copied this from had obj.width; but my objects don't have a width property, so I'm hacking one in
     var objHalfHeight = obj.getHeight() / 2;
 
-    // TODO smarten up this objCenterX and objCenterY calculation. Use center points if we have them; else compute them
     var minPt = obj.getMinPt();
     var maxPt = obj.getMaxPt();
 
