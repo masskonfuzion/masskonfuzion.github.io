@@ -43,11 +43,7 @@ function Spaceship() {
     this.commandMap["setFireAOff"] = this.disableFireA;
 
     this.aiControlled = false;
-    this.aiBehavior = "";
-    this.aiProfile = "miner";    // TODO at some point, stop hardcoding this
-    this.aiMaxLinearVel = 24;    // TODO tune this -- currently set artificially low, for testing
-    this.target = null;
-
+    this.aiConfig = {};
 }
 
 
@@ -66,6 +62,14 @@ Spaceship.prototype.initialize = function(configObj) {
 
     if(configObj.hasOwnProperty("isAI") && true == configObj["isAI"]) {
         this.aiControlled = true;
+
+        this.aiConfig["aiBehavior"] = "";
+        this.aiConfig["aiProfile"] = "miner";           // TODO at some point, stop hardcoding this
+        this.aiConfig["aiMaxLinearVel"] = 24;           // TODO tune this -- currently set artificially low, for testing
+        this.aiConfig["aiSqrAttackDist"] = 80 * 80;     // Squared distance within which a ship will attack a target
+        this.aiConfig["aiFireHalfAngle"] = 3;           // degrees
+        this.aiConfig["target"] = null;
+
         this.initializeAI(configObj["knowledge"]);
     }
 };
@@ -234,7 +238,6 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
     // AI FSM, but it's the quickest/easiest way, given the implementation details of this game.
 
     // TODO move ship state machine into its own file
-    // TODO move state machine objects (states, conditions, transitions) into the state machine object. Or, otherwise, just don't store them in thee spaceship object (e.g. the ship doesn't need "this.aiState*"
     // Note/question: In JS, if I (1) create an object (say, newObj)while inside a function, then (2) assign that object to container object (so, e.g. containerObj["someLabel"] = newObj; -- does newObj still exist after the function exits?
     // In C/C++, the answer would depend on how I created newObj -- if i just statically declared newObj, it would be gone; I'd have to new/malloc the obj, to have a pointer to it in heap space.
     // But in JS (I tested this in Firefox developer console) - the objects stick around. JS must already be doing some kind of heap allocation (which I guess makes sense, for a garbage-collected language)
@@ -253,7 +256,7 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
         // knowledge is passed in by the state machine
         // Find the nearest target
         var parentObj = knowledge["parentObj"];
-        if (parentObj.aiProfile == "miner") {
+        if (parentObj.aiConfig["aiProfile"] == "miner") {
             // find nearest asteroid
             var astMgr = knowledge["gameLogic"].gameObjs["astMgr"];
             var minSqrDist = Number.MAX_SAFE_INTEGER;
@@ -264,14 +267,14 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
                     var sqDist = vec2.sqrDist(parentObj.components["physics"].currPos, asteroid.components["physics"].currPos);
                     if (sqDist < minSqrDist) {
                         minSqrDist = sqDist;
-                        parentObj.target = asteroid;
+                        parentObj.aiConfig["target"] = asteroid;
                     }
                 }
             }
         }
     };
-    var aiTransSelectToPursue = new FSMTransition("PursueTarget", new FSMConditionReturnTrue()); // No condition; always transition from SelectTarget to PursueTarget
-    aiStateSelectTarget.addTransition(aiTransSelectToPursue);
+    var aiTransSelectToAttack = new FSMTransition("AttackTarget", new FSMConditionReturnTrue()); // No condition; always transition from SelectTarget to AttackTarget
+    aiStateSelectTarget.addTransition(aiTransSelectToAttack);
 
 
     var aiStatePursueTarget = new FSMState("PursueTarget");
@@ -295,95 +298,98 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
         //   - dot the sightLine-target endpoint vectors against the sightLine normals
         //   - actually, you probably only need to dot the vector from ship to target against the normals
         //   - the target is in sight if each of the respective sightLine-to-target vectors dotted with the sightNormal is > 0
-        var parentObj = knowledge["parentObj"];
+        var parentShip = knowledge["parentObj"];
 
         // Get a reference to the ship's angle vector
-        var shipDir = parentObj.components["physics"].angleVec; // NOTE: shipDir is already unit length
-
-        var sightLine0 = vec2.create();
-        var sightLine1 = vec2.create();
-
-        var sightHalfAngle = 20;    // in degrees
-
-        var rotMat = mat2.create();
-
-        // Compute the "left" sight line
-        mat2.fromRotation(rotMat, glMatrix.toRadian(-sightHalfAngle));
-        vec2.transformMat2(sightLine0, shipDir, rotMat);    // NOTE: sightLine0 is normalized, because it is the rotation of a normalized vector
-        var norm0 = vec2.create();
-        vec2.set(norm0, sightLine0[1], sightLine0[0]);   // Cheap & easy 90 deg rotation in the positive direction (also normalized already)
-
-        // Compute the "right" sight line
-        mat2.fromRotation(rotMat, glMatrix.toRadian(sightHalfAngle));
-        vec2.transformMat2(sightLine1, shipDir, rotMat);    // NOTE: sightLine0 is normalized, because it is the rotation of a normalized vector
-        var norm1 = vec2.create();
-        vec2.set(norm1, sightLine1[1], -sightLine1[0]); // normalized (rotation of a normalized vector)
+        var shipDir = vec2.clone( parentShip.components["physics"].angleVec ); // NOTE: angleVec is already unit length
 
         // Compute the ship-to-target vector
         var shipToTarget = vec2.create();
-        vec2.sub(shipToTarget, parentObj.target.components["physics"].currPos, parentObj.components["physics"].currPos);
+        vec2.sub(shipToTarget, parentShip.aiConfig["target"].components["physics"].currPos, parentShip.components["physics"].currPos);
+        vec2.normalize(shipToTarget, shipToTarget);
 
-        // Compute dot products
-        var dotNorm0 = vec2.dot(norm0, shipToTarget);
-        var dotNorm1 = vec2.dot(norm1, shipToTarget);
+        var th = Math.acos( vec2.dot(shipDir, shipToTarget) );  // radians
 
+        if (th > glMatrix.toRadian(20)) {   // TODO don't hardcode the half angle here
+            // We need to figure out which direction the angle sweeps, with respect to the ship's heading. So we'll compute a normal vector in the + rotation direction. So, e.g., (1,0) rotates to (0, 1); (0,1) rotates to (-1, 0), etc.
+            // NOTE: In HTML5/Canvas space, a + rotation is clockwise on the screen (i.e., to the right)
+            var normal = vec2.create();
+            vec2.set(normal, -shipDir[1], shipDir[0]);    
 
-        if (vec2.dot(shipDir, shipToTarget) > 0) {
-            if (dotNorm0 < 0) {
-                // Target is to the left
-                parentObj.enableTurnLeft();
-            } else if (dotNorm1 < 0) {
-                // Target is to the right
-                parentObj.enableTurnRight();
-            } else if (dotNorm0 > 0 && dotNorm1 > 0) {
-                parentObj.disableTurn();
-
-                var currVel = vec2.create();
-                vec2.sub(currVel, parentObj.components["physics"].currPos, parentObj.components["physics"].prevPos);
-                if (vec2.length(currVel) / game.fixed_dt_s < parentObj.aiMaxLinearVel) {
-                    parentObj.enableThrust();
-                } else {
-                    parentObj.disableThrust();
-                }
+            // Determine which direction to turn, to aim
+            // Could ternary here ( condition ? val_if_true : val_if_false ), but for readability, we'll use long form
+            if (vec2.dot(normal, shipToTarget) > 0) {
+                parentShip.enableTurnRight();
+            } else {
+                parentShip.enableTurnLeft();
             }
         } else {
-            if (dotNorm0 < dotNorm1) {
-                parentObj.enableTurnLeft();
+            parentShip.disableTurn();
+
+            var currVel = vec2.create();
+            vec2.sub(currVel, parentShip.components["physics"].currPos, parentShip.components["physics"].prevPos);
+            if (vec2.length(currVel) / game.fixed_dt_s < parentShip.aiConfig["aiMaxLinearVel"]) {
+                parentShip.enableThrust();
             } else {
-                parentObj.enableTurnRight();
+                parentShip.disableThrust();
             }
         }
-
     };
     // NOTE: We're presuming that if a target becomes not-alive during pursuit, that means we didn't kill it; something else did
-    var aiCondPursueToSelect = new FSMConditionEQ(aiFsm.knowledge, "ref", "parentObj.target.alive", "const", false);   // TODO! Find a way to identify if a spaceship is alive. Using .alive works for particles (asteroids); maybe just add an alive member to the spaceship
+    var aiCondPursueToSelect = new FSMConditionEQ(aiFsm.knowledge, "ref", "parentObj.aiConfig.target.alive", "const", false);   // TODO! Find a way to identify if a spaceship is alive. Using .alive works for particles (asteroids); maybe just add an alive member to the spaceship
     var aiTransPursueToSelect = new FSMTransition("SelectTarget", aiCondPursueToSelect);
     aiStatePursueTarget.addTransition(aiTransPursueToSelect);
     
-    var aiCondPursueToAttack = new FSMConditionLT(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.target.components.physics.currPos"], "const", 1600);   // TODO don't hardcode -- use thresholds in an AI config object
+    var aiCondPursueToAttack = new FSMConditionLT(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.aiConfig.target.components.physics.currPos"], "const", this.aiConfig["aiSqrAttackDist"]);   // TODO don't hardcode -- use thresholds in an AI config object
     var aiTransPursueToAttack = new FSMTransition("AttackTarget", aiCondPursueToAttack);
     aiStatePursueTarget.addTransition(aiTransPursueToAttack);
 
 
     var aiStateAttackTarget = new FSMState("AttackTarget");
-    aiStateAttackTarget.enter = function(knowledge = null) {
-        // Fire away!!
-        var parentObj = knowledge["parentObj"];
-        parentObj.enableFireA();
-
-    };
+    aiStateAttackTarget.enter = function(knowledge = null) { };
     aiStateAttackTarget.exit = function(knowledge = null) {
-        var parentObj = knowledge["parentObj"];
-        parentObj.disableFireA();
+        var parentShip = knowledge["parentObj"];
+        parentShip.disableFireA();
 
     };
     aiStateAttackTarget.update = function(knowledge, dt_s = game.fixed_dt_s) {
+        var parentShip = knowledge["parentObj"];
+
+        var shipDir = vec2.clone( parentShip.components["physics"].angleVec );  // angleVec is already normalized
+
+        var shipToTarget = vec2.create();
+        vec2.sub(shipToTarget, parentShip.aiConfig["target"].components["physics"].currPos, parentShip.components["physics"].currPos);
+        vec2.normalize(shipToTarget, shipToTarget);
+
+        // the dot product represents |u|*|v|*cos(th) - because |u| == |v| == 1, the dot product represents cos(th) between the two vectors
+        var th = Math.acos( vec2.dot(shipDir, shipToTarget) );  // radians
+
+        // if th > the ai aim/fire threshold angle, we need to narrow the angle by turning in the direction that shipToTarget is offset from shipDir
+        if (th > glMatrix.toRadian(parentShip.aiConfig["aiFireHalfAngle"])) {
+            // We need to figure out which direction the angle sweeps, with respect to the ship's heading. So we'll compute a normal vector in the + rotation direction. So, e.g., (1,0) rotates to (0, 1); (0,1) rotates to (-1, 0), etc.
+            // NOTE: In HTML5/Canvas space, a + rotation is clockwise on the screen (i.e., to the right)
+            var normal = vec2.create();
+            vec2.set(normal, -shipDir[1], shipDir[0]);    
+
+            // Determine which direction to turn, to aim
+            // Could ternary here ( condition ? val_if_true : val_if_false ), but for readability, we'll use long form
+            if (vec2.dot(normal, shipToTarget) > 0) {
+                parentShip.enableTurnRight();
+            } else {
+                parentShip.enableTurnLeft();
+            }
+            
+        } else {
+            // Fire away!!
+            parentShip.disableTurn();
+            parentShip.enableFireA();
+        }
     }
-    var aiCondAttackToSelect = new FSMConditionEQ(aiFsm.knowledge, "ref", "parentObj.target.alive", "const", false);   // TODO! Find a way to identify if a spaceship is alive. Using .alive works for particles (asteroids); maybe just add an alive member to the spaceship
+    var aiCondAttackToSelect = new FSMConditionEQ(aiFsm.knowledge, "ref", "parentObj.aiConfig.target.alive", "const", false);   // TODO! Find a way to identify if a spaceship is alive. Using .alive works for particles (asteroids); maybe just add an alive member to the spaceship
     var aiTransAttackToSelect = new FSMTransition("SelectTarget", aiCondAttackToSelect);
     aiStateAttackTarget.addTransition(aiTransAttackToSelect);
 
-    var aiCondAttackToPursue = new FSMConditionGTE(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.target.components.physics.currPos"], "const", 1600);   // TODO don't hardcode -- use thresholds in an AI config object
+    var aiCondAttackToPursue = new FSMConditionGTE(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.aiConfig.target.components.physics.currPos"], "const", this.aiConfig["aiSqrAttackDist"]);   // TODO don't hardcode -- use thresholds in an AI config object
     var aiTransAttackToPursue = new FSMTransition("PursueTarget", aiCondAttackToPursue);
     aiStateAttackTarget.addTransition(aiTransAttackToPursue);
 

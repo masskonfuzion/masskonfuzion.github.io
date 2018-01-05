@@ -600,6 +600,8 @@ GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
     }
 
     if (queryObj.hasOwnProperty("aiControlled") && queryObj.aiControlled) {
+        queryObj.disableThrust();
+        queryObj.disableTurn();
         queryObj.resetAI();
     }
 }
