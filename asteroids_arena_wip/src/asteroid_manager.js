@@ -38,8 +38,7 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
 
     // Notes on bannedLocations:
     //  - We're probably taking references to the ship's (or ships') position(s), which is what we want
-    // TODO - for all bannedLocations assignments, use a list with all the ships in the shipList
-    var bannedLocations = [ {"position": this.parentObj.gameObjs["ship0"].components["physics"].currPos, "radius": 100 } ];
+    var bannedLocations = this.createBannedLocationsList(100);  // The parameter is the radius from each banned location, within which asteroids cannot be spawned
     for (var i = 0; i < initAsteroids; i++) {
         // Note the "funcCalls" property - "params" is a list that, when passed into a function.apply() call, is "splatted" into individual parameters, similar to Python *args
         var configObj = { "renderCompType": "image",
@@ -74,7 +73,7 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
         myEmitter.setPosition(spawnPos[0], spawnPos[1]);
         myEmitter.setVelocityRange(1.0, 5.0);   // TODO Confirm.. do I really need this here? I thought I only needed to set the velocity range one time, in the initialize function
 
-        var bannedLocations = [ {"position": this.parentObj.gameObjs["ship0"].components["physics"].currPos, "radius": 50 } ];
+        var bannedLocations = this.createBannedLocationsList(50);
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
                           "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ],
@@ -92,12 +91,6 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
 };
 
 
-// TODO either delete setAsteroidCounts() or keep it, and flesh it out
-//AsteroidManager.prototype.setAsteroidCounts = function(initAsteroids, maxAsteroids) {
-//    this.initAsteroids = initAsteroids;
-//    this.maxAsteroids = maxAsteroids;
-//};
-
 AsteroidManager.prototype.resetAsteroidField = function() {
     // TODO revisit what to do when you reset
     // This fn is meant to be called after setting max/init (or maybe we should reset when we initialize? Not sure..
@@ -109,6 +102,9 @@ AsteroidManager.prototype.draw = function(canvasContext) {
     myPS.draw(canvasContext);
 };
 
+
+// disable asteroids (primarily when an asteroid leaves the arena; in other cases, e.g. collision with ship or
+// bullet, disableAndSpawnAsteroids is called (which disables an asteroid, and spawns new asteroid fragments
 // Note: Though disableAsteroids appears before disableAndSpawnAsteroids in the code, disableAndSpawnAsteroids was written before
 // disableAsteroids, chronologically. disableAsteroids takes in a list of asteroids to disable, to stay consistent with disableAndSpawnAsteroids, 
 // but looking back on it, I'm not sure why I pass in a list, and not just a single asteroid..
@@ -148,13 +144,14 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         astToDisable.disable({"collisionMgrRef": this.components["asteroidPS"].collisionMgrRef});
         this.activeAsteroids[astToDisable.size] -= 1;
 
-        var bannedLocations = [ {"position": this.parentObj.gameObjs["ship0"].components["physics"].currPos, "radius": 50 } ];
+        //var bannedLocations = [ {"position": this.parentObj.gameObjs["ship0"].components["physics"].currPos, "radius": 50 } ];
+        var bannedLocations = this.createBannedLocationsList(50);
         // TODO trigger a particle explosion
         if (astToDisable.size > 0) {
-            for (var i = 0; i < params.numToSpawn; i++) {
-                var newSize = astToDisable.size - 1;
-                var newSizeStr = this.asteroidSizeMap[astToDisable.size - 1];
+            var newSize = astToDisable.size - 1;
+            var newSizeStr = this.asteroidSizeMap[astToDisable.size - 1];
 
+            for (var i = 0; i < params.numToSpawn; i++) {
                 var configObj = { "renderCompType": "image",
                                   "imageRef": game.imgMgr.imageMap[ newSizeStr ].imgObj,
                                   "funcCalls": [ { "func": Asteroid.prototype.setSize, "params": [newSize] } ],
@@ -174,17 +171,25 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
                 var fragmentPos = vec2.create();
                 vec2.add(fragmentPos, spawnPoint, offsetVec);
 
-                myEmitter.setPosition(fragmentPos[0], fragmentPos[1]);
-                myEmitter.setVelocityRange(vec2.length(astVel) * launchData[i]["velMult"], vec2.length(astVel) * launchData[i]["velMult"]);
-                myEmitter.setLaunchDir(launchData[i]["dir"][0], launchData[i]["dir"][1]);
-                myEmitter.setAngleRange(0, 0);  // i.e., launch in exactly the direction of launchDir
+                // If the fragment position is in the arena, then spawn it
+                if (this.parentObj.gameObjs["arena"].containsPt(fragmentPos)) {
+                    myEmitter.setPosition(fragmentPos[0], fragmentPos[1]);
+                    myEmitter.setVelocityRange(vec2.length(astVel) * launchData[i]["velMult"], vec2.length(astVel) * launchData[i]["velMult"]);
+                    myEmitter.setLaunchDir(launchData[i]["dir"][0], launchData[i]["dir"][1]);
+                    myEmitter.setAngleRange(0, 0);  // i.e., launch in exactly the direction of launchDir
 
-                // Emit a particle with the given config. Note that the config tells the particle which image to use for its render component
-                myEmitter.emitParticle(game.fixed_dt_s, configObj);
-                this.activeAsteroids[newSize] += 1;
+                    // Emit a particle with the given config. Note that the config tells the particle which image to use for its render component
+                    myEmitter.emitParticle(game.fixed_dt_s, configObj);
+                    this.activeAsteroids[newSize] += 1;
+                } else {
+                    // Not sure if anything actually needs to happen here. If the fragment spawn
+                    // position is outside the arena, then do nothing.
+
+                    // Possibly delete this empty else block, because jumping to it wastes
+                    // processor time
+                }
             }
         }
-
     }
 };
 
@@ -196,4 +201,24 @@ AsteroidManager.prototype.executeCommand = function(cmdMsg, params) {
     // Call function
     // Note that this command passes a "params" arg in the cmdMsg payload, where other executeCommand functions (elsewhere in this codebase) do not..
     this.commandMap[cmdMsg].call(this, params); // use call() because without it, we're losing our "this" reference (going from AsteroidManager to Object)
+};
+
+
+// Create a list of banned locations, to be processed by asteroid spawning functions
+AsteroidManager.prototype.createBannedLocationsList = function(radius) {
+    var bannedLocations = [];
+
+    // iterate over the gameLogic object's shipDict to get the positions of ships in play
+    //for (var objID of Object.getOwnPropertyNames(this.parentObj.shipDict)) {  // The long-form way to iterate?
+    for (var objID in this.parentObj.shipDict) {
+        var shipID = this.parentObj.shipDict[objID];
+
+        var bannedLocItem = { "position": this.parentObj.gameObjs[shipID].components["physics"].currPos
+                            , "radius": radius
+                            };
+
+        bannedLocations.push(bannedLocItem);
+    };
+
+    return bannedLocations;
 };

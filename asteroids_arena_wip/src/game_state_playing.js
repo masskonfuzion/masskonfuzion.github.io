@@ -17,9 +17,9 @@ GameStatePlaying.prototype.cleanup = function() {
 // update physics simulation/collision
 // processes events/messages, etc.
 GameStatePlaying.prototype.preRender = function(canvasContext, dt_s) {
-    this.gameLogic.processMessages(game.fixed_dt_s);   // TODO delete
+    this.gameLogic.processMessages(game.fixed_dt_s);
     // Note: lurking in the gameLogic update() is a collisionMgr update that will attempt (but be blocked) to enqueue multiple collision events.
-    this.gameLogic.update(game.fixed_dt_s);  // TODO delete
+    this.gameLogic.update(game.fixed_dt_s);
 };
 
 

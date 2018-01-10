@@ -120,21 +120,12 @@ function mainloop(timestamp)
 		game.timer.elapsed -= game.fixed_dt_s;
 	}
 
-    //TODO delete
-    //drawStuff(game.context);    // game is global, so technically, we don't HAVE to pass the canvas context, but eh whatever. Could pass in the canvas here (you can get the context from the canvas obj). But SHOULD we?
-
     currState.render(game.context, game.fixed_dt_s);
     currState.postRender(game.context, game.fixed_dt_s);
 
     frameID = requestAnimationFrame(mainloop);
 
 }
-
-// TODO delete
-//function drawStuff(canvasContext)
-//{
-//    gameLogic.draw(canvasContext);
-//}
 
 </script>
 

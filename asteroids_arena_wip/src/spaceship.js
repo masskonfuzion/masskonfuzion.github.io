@@ -66,7 +66,7 @@ Spaceship.prototype.initialize = function(configObj) {
         this.aiConfig["aiBehavior"] = "";
         this.aiConfig["aiProfile"] = "miner";           // TODO at some point, stop hardcoding this
         this.aiConfig["aiMaxLinearVel"] = 24;           // TODO tune this -- currently set artificially low, for testing
-        this.aiConfig["aiSqrAttackDist"] = 80 * 80;     // Squared distance within which a ship will attack a target
+        this.aiConfig["aiSqrAttackDist"] = 100 **2;     // Squared distance within which a ship will attack a target
         this.aiConfig["aiFireHalfAngle"] = 3;           // degrees
         this.aiConfig["target"] = null;
 
@@ -247,8 +247,10 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
     aiStateSelectTarget.enter = function(knowledge = null) {
         // possibly some logic here, like setting hunter/miner profile
         // NOTE: we're actually overriding a function provided in the FSMState class, which has the same signature. If we don't actually use enter() and exit(), we don't have to implement them.
+        console.log("Enter state SelectTarget");
     };
     aiStateSelectTarget.exit = function(knowledge = null) {
+        console.log("Exit state SelectTarget");
     };
     aiStateSelectTarget.update = function(knowledge, dt_s = null) {
         // NOTE: objRef will be passed in by the FSM. It will be the gameLogic object, so this state will have access to ships, bullets, and asteroids
@@ -278,8 +280,12 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
 
 
     var aiStatePursueTarget = new FSMState("PursueTarget");
-    aiStatePursueTarget.enter = function(knowledge = null) { };
-    aiStatePursueTarget.exit = function(knowledge = null) { };
+    aiStatePursueTarget.enter = function(knowledge = null) {
+        console.log("Enter state PursueTarget");
+    };
+    aiStatePursueTarget.exit = function(knowledge = null) {
+        console.log("Exit state PursueTarget");
+    };
     aiStatePursueTarget.update = function(knowledge, dt_s = game.fixed_dt_s) {
         // Rembmer: game is a global object
 
@@ -310,7 +316,12 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
 
         var th = Math.acos( vec2.dot(shipDir, shipToTarget) );  // radians
 
-        if (th > glMatrix.toRadian(20)) {   // TODO don't hardcode the half angle here
+        // if more than 90 deg between velocity dir and shipToTarget, then, turn to a heading that will oppose the ship's velocity (i.e. slow the ship down, not merely add velocity in some other dir)
+        if (false) {
+            // TODO fill me in here
+            // TODO also, perhaps remove or rework the thrust block below
+        }
+        else if (th > glMatrix.toRadian(20)) {   // TODO don't hardcode the half angle here
             // We need to figure out which direction the angle sweeps, with respect to the ship's heading. So we'll compute a normal vector in the + rotation direction. So, e.g., (1,0) rotates to (0, 1); (0,1) rotates to (-1, 0), etc.
             // NOTE: In HTML5/Canvas space, a + rotation is clockwise on the screen (i.e., to the right)
             var normal = vec2.create();
@@ -327,8 +338,9 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
             parentShip.disableTurn();
 
             var currVel = vec2.create();
+            // TODO come up with a way to have the ship control its velocity similar to how humans (well, I) do it. i.e., change heading/thrust to manage individual components of velocity
             vec2.sub(currVel, parentShip.components["physics"].currPos, parentShip.components["physics"].prevPos);
-            if (vec2.length(currVel) / game.fixed_dt_s < parentShip.aiConfig["aiMaxLinearVel"]) {
+            if (vec2.dot(currVel, shipToTarget) < 0 || vec2.length(currVel) / game.fixed_dt_s < parentShip.aiConfig["aiMaxLinearVel"]) {
                 parentShip.enableThrust();
             } else {
                 parentShip.disableThrust();
@@ -340,17 +352,19 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
     var aiTransPursueToSelect = new FSMTransition("SelectTarget", aiCondPursueToSelect);
     aiStatePursueTarget.addTransition(aiTransPursueToSelect);
     
-    var aiCondPursueToAttack = new FSMConditionLT(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.aiConfig.target.components.physics.currPos"], "const", this.aiConfig["aiSqrAttackDist"]);   // TODO don't hardcode -- use thresholds in an AI config object
+    var aiCondPursueToAttack = new FSMConditionLTE(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.aiConfig.target.components.physics.currPos"], "const", this.aiConfig["aiSqrAttackDist"]);
     var aiTransPursueToAttack = new FSMTransition("AttackTarget", aiCondPursueToAttack);
     aiStatePursueTarget.addTransition(aiTransPursueToAttack);
 
 
     var aiStateAttackTarget = new FSMState("AttackTarget");
-    aiStateAttackTarget.enter = function(knowledge = null) { };
+    aiStateAttackTarget.enter = function(knowledge = null) {
+        console.log("Enter state AttackTarget");
+    };
     aiStateAttackTarget.exit = function(knowledge = null) {
         var parentShip = knowledge["parentObj"];
         parentShip.disableFireA();
-
+        console.log("Exit state AttackTarget");
     };
     aiStateAttackTarget.update = function(knowledge, dt_s = game.fixed_dt_s) {
         var parentShip = knowledge["parentObj"];
@@ -389,7 +403,7 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
     var aiTransAttackToSelect = new FSMTransition("SelectTarget", aiCondAttackToSelect);
     aiStateAttackTarget.addTransition(aiTransAttackToSelect);
 
-    var aiCondAttackToPursue = new FSMConditionGTE(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.aiConfig.target.components.physics.currPos"], "const", this.aiConfig["aiSqrAttackDist"]);   // TODO don't hardcode -- use thresholds in an AI config object
+    var aiCondAttackToPursue = new FSMConditionGT(aiFsm.knowledge, "calc", ["sqrDist", "parentObj.components.physics.currPos", "parentObj.aiConfig.target.components.physics.currPos"], "const", this.aiConfig["aiSqrAttackDist"]);
     var aiTransAttackToPursue = new FSMTransition("PursueTarget", aiCondAttackToPursue);
     aiStateAttackTarget.addTransition(aiTransAttackToPursue);
 

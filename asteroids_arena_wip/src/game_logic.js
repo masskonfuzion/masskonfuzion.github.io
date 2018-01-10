@@ -31,7 +31,8 @@ GameLogic.prototype.initialize = function() {
 
     this.settings["hidden"]["pointValues"] = { "destroyLargeAsteroid": 25,
                                                "destroyMediumAsteroid": 50,
-                                               "destroySmallAsteroid": 100 };
+                                               "destroySmallAsteroid": 100,
+                                               "kill": 250};
 
     this.gameStats["player"] = new GameScoresAndStats();
 
@@ -469,7 +470,13 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             var shooterObjectID = this.lookupObjectID(bulletRef.emitterID, "Spaceship");
             // TODO keep track of kills for all ships, including computer-controlled
             if (this.shipDict[shooterObjectID] == "ship0") {    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
+                // If ship0 is the shooter, then increment human player's kills (TODO think about scaling up for local multiplayer?)
                 this.gameStats["player"].kills += 1;
+                this.gameStats["player"].score += this.settings["hidden"]["pointValues"]["kill"];
+            }
+            else if (this.shipDict[spaceshipRef.objectID] == "ship0") {
+                // If spaceshipRef's objectID is the key of ship0 in this.shipDict, then the human player got hit. Increment deaths
+                this.gameStats["player"].deaths += 1;
             }
 
             cmdMsg = { "topic": "GameCommand",
