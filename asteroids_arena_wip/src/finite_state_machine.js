@@ -319,7 +319,9 @@ function FSM(objRef = null) {
     this.current_state = null;
     this.running = false;
     this.knowledge = objRef;  // A dict or similar -- contains all the data to be used as inputs to the FSM
-    // TODO determine if I need to deepcopy? But maybe not.. But maybe?
+                              // NOTE: Deepcopy probably not needed here, because objRef lives on
+                              // the heap, and we only need to keep a reference to it, so it
+                              // doesn't get garbage collected
 
 }
 
@@ -332,6 +334,9 @@ FSM.prototype.initialize = function(objRef = null) {
 
 //Iterate through the transitions of the current state, evaluating the control conditions.
 //If no conditions evaluate to True, then by default, stay in the same state.
+// TODO investigate keeping a "state stack" so that, as we transition into/out of states, we can
+// know which states we came from. Could be an alternative approach to enabling alarm behaviors
+// than the approach given in Game AI Programming (book), by Ian Millington
 FSM.prototype.checkTransitions = function() {
    for (var transition of this.current_state.transitions) {
        if (transition.test()) {
