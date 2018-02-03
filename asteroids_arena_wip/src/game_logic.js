@@ -534,7 +534,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         // TODO keep deaths for all the ships, including computer-controlled
         var shipName = this.shipDict[spaceshipRef.objectID];    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
         this.gameStats[shipName].deaths += 1;
-        this.gameStats[shooterName].score = Math.max(0, this.gameStats[shipName].score + this.settings["hidden"]["pointValues"]["death"]);
+        this.gameStats[shipName].score = Math.max(0, this.gameStats[shipName].score + this.settings["hidden"]["pointValues"]["death"]);
 
     }
 
