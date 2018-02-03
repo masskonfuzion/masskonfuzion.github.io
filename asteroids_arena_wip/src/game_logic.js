@@ -4,6 +4,8 @@ function GameScoresAndStats() {
     this.kills = 0;
 }
 
+var jankyListOfScoreColors = ["orangered", "cyan"];
+
 function GameLogic() {
 // TODO: Probably make the GameLogic class implement some interface that has the necessary functions that all GameLogic objects must have
     this.collisionMgr = null;   // Placeholder for a collision manager (definition probably belongs in base/interface class)
@@ -32,7 +34,9 @@ GameLogic.prototype.initialize = function() {
     this.settings["hidden"]["pointValues"] = { "destroyLargeAsteroid": 25,
                                                "destroyMediumAsteroid": 50,
                                                "destroySmallAsteroid": 100,
-                                               "kill": 250};
+                                               "kill": 250,
+                                               "death": -300
+                                             };
 
     // ----- Initialize collision manager
     // NOTE: Collision Manager is initialized first, so that other items can access it and register their collision objects with it
@@ -107,7 +111,6 @@ GameLogic.prototype.initialize = function() {
         var shipName = this.shipDict[shipIDKey];
         this.gameStats[shipName] = new GameScoresAndStats();
     }
-
 
 
     // ----- Initialize Asteroid Manager
@@ -483,6 +486,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             var victimName = this.shipDict[spaceshipRef.objectID];
                 // If spaceshipRef's objectID is the key of ship0 in this.shipDict, then the human player got hit. Increment deaths
             this.gameStats[victimName].deaths += 1;
+            this.gameStats[shooterName].score = Math.max(0, this.gameStats[victimName].score + this.settings["hidden"]["pointValues"]["death"]);
 
             cmdMsg = { "topic": "GameCommand",
                        "command": "disableBullet",
@@ -530,6 +534,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         // TODO keep deaths for all the ships, including computer-controlled
         var shipName = this.shipDict[spaceshipRef.objectID];    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
         this.gameStats[shipName].deaths += 1;
+        this.gameStats[shooterName].score = Math.max(0, this.gameStats[shipName].score + this.settings["hidden"]["pointValues"]["death"]);
 
     }
 
