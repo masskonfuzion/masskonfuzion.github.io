@@ -34,9 +34,6 @@ GameLogic.prototype.initialize = function() {
                                                "destroySmallAsteroid": 100,
                                                "kill": 250};
 
-    this.gameStats["player"] = new GameScoresAndStats();
-
-
     // ----- Initialize collision manager
     // NOTE: Collision Manager is initialized first, so that other items can access it and register their collision objects with it
     this.collisionMgr = new CollisionManager();
@@ -80,6 +77,7 @@ GameLogic.prototype.initialize = function() {
     this.addGameObject("ship1", new Spaceship());
     shipRef = this.gameObjs["ship1"];
 
+
     var knowledgeObj = { "parentObj": shipRef,
                          "gameLogic": this
                        };
@@ -102,6 +100,15 @@ GameLogic.prototype.initialize = function() {
 
     // NOTE: because of the way the game engine/framework is designed, we have to add individual spaceships as GameObjects (e.g., so they can get assigned an ObjectID), and then if we want to have a "shipDict", we have to have a list of references to the ship GameObjects
     this.shipDict[shipRef.objectID] = "ship1";
+
+
+    // Create score keeping object
+    for (var shipIDKey in this.shipDict) {
+        var shipName = this.shipDict[shipIDKey];
+        this.gameStats[shipName] = new GameScoresAndStats();
+    }
+
+
 
     // ----- Initialize Asteroid Manager
     this.addGameObject("astMgr", new AsteroidManager());
@@ -389,9 +396,9 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         this.spawnAtNewLocation(spaceshipRef, 75);
 
         // TODO keep deaths for all the ships, including computer-controlled
-        if (this.shipDict[spaceshipRef.objectID] == "ship0") {    // NOTE: I hate that JS doesn't care that spaceshipObjectID is a string, but the keys in the dict/obj are int/float
-            this.gameStats["player"].deaths += 1;   // TODO - now that there's a ship list, we need to map the ship ref to the player (either cpu or human)
-        }
+        var shipName = this.shipDict[spaceshipRef.objectID];    // NOTE: I hate that JS doesn't care that spaceshipObjectID is a string, but the keys in the dict/obj are int/float
+        this.gameStats[shipName].deaths += 1;   // TODO - now that there's a ship list, we need to map the ship ref to the player (either cpu or human)
+
     } else if (gameObjAType == "Bullet" && gameObjBType == "Asteroid" || gameObjBType == "Bullet" && gameObjAType == "Asteroid") {
         // Get a reference to the asteroid obj that is part of the collision, to include it as a param to the AsteroidManager, to disable the Asteroid and spawn new ones
         var asteroidRef = null;
@@ -411,18 +418,17 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         // NOTE: We have to increment players' scores before destroying the bullets
         var shooterObjectID = this.lookupObjectID(bulletRef.emitterID, "Spaceship");
         // TODO keep scores for all the ships, including computer-controlled
-        if (this.shipDict[shooterObjectID] == "ship0") {    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
-            switch (asteroidRef.size) {
-                case 0:
-                    this.gameStats["player"].score += this.settings["hidden"]["pointValues"]["destroySmallAsteroid"];
-                    break;
-                case 1:
-                    this.gameStats["player"].score += this.settings["hidden"]["pointValues"]["destroyMediumAsteroid"];
-                    break;
-                case 2:
-                    this.gameStats["player"].score += this.settings["hidden"]["pointValues"]["destroyLargeAsteroid"];
-                    break;
-            }
+        var shipName = this.shipDict[shooterObjectID];  // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
+        switch (asteroidRef.size) {
+            case 0:
+                this.gameStats[shipName].score += this.settings["hidden"]["pointValues"]["destroySmallAsteroid"];
+                break;
+            case 1:
+                this.gameStats[shipName].score += this.settings["hidden"]["pointValues"]["destroyMediumAsteroid"];
+                break;
+            case 2:
+                this.gameStats[shipName].score += this.settings["hidden"]["pointValues"]["destroyLargeAsteroid"];
+                break;
         }
 
 
@@ -469,15 +475,14 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
             var shooterObjectID = this.lookupObjectID(bulletRef.emitterID, "Spaceship");
             // TODO keep track of kills for all ships, including computer-controlled
-            if (this.shipDict[shooterObjectID] == "ship0") {    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
+            var shooterName = this.shipDict[shooterObjectID];  // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
                 // If ship0 is the shooter, then increment human player's kills (TODO think about scaling up for local multiplayer?)
-                this.gameStats["player"].kills += 1;
-                this.gameStats["player"].score += this.settings["hidden"]["pointValues"]["kill"];
-            }
-            else if (this.shipDict[spaceshipRef.objectID] == "ship0") {
+            this.gameStats[shooterName].kills += 1;
+            this.gameStats[shooterName].score += this.settings["hidden"]["pointValues"]["kill"];
+
+            var victimName = this.shipDict[spaceshipRef.objectID];
                 // If spaceshipRef's objectID is the key of ship0 in this.shipDict, then the human player got hit. Increment deaths
-                this.gameStats["player"].deaths += 1;
-            }
+            this.gameStats[victimName].deaths += 1;
 
             cmdMsg = { "topic": "GameCommand",
                        "command": "disableBullet",
@@ -523,9 +528,8 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
         this.spawnAtNewLocation(spaceshipRef, 75);
         // TODO keep deaths for all the ships, including computer-controlled
-        if (this.shipDict[spaceshipRef.objectID] == "ship0") {    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
-            this.gameStats["player"].deaths += 1;
-        }
+        var shipName = this.shipDict[spaceshipRef.objectID];    // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
+        this.gameStats[shipName].deaths += 1;
 
     }
 
