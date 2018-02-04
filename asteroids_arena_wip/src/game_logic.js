@@ -33,9 +33,9 @@ GameLogic.prototype.initialize = function() {
 
     this.settings["hidden"]["pointValues"] = { "destroyLargeAsteroid": 25,
                                                "destroyMediumAsteroid": 50,
-                                               "destroySmallAsteroid": 100,
-                                               "kill": 250,
-                                               "death": -300
+                                               "destroySmallAsteroid": 75,
+                                               "kill": 200,
+                                               "death": -100
                                              };
 
     // ----- Initialize collision manager
@@ -486,7 +486,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             var victimName = this.shipDict[spaceshipRef.objectID];
                 // If spaceshipRef's objectID is the key of ship0 in this.shipDict, then the human player got hit. Increment deaths
             this.gameStats[victimName].deaths += 1;
-            this.gameStats[shooterName].score = Math.max(0, this.gameStats[victimName].score + this.settings["hidden"]["pointValues"]["death"]);
+            this.gameStats[victimName].score = Math.max(0, this.gameStats[victimName].score + this.settings["hidden"]["pointValues"]["death"]);
 
             cmdMsg = { "topic": "GameCommand",
                        "command": "disableBullet",

@@ -64,13 +64,22 @@ Spaceship.prototype.initialize = function(configObj) {
     if(configObj.hasOwnProperty("isAI") && true == configObj["isAI"]) {
         this.aiControlled = true;
 
-        this.aiConfig["aiBehavior"] = "";
+        this.aiConfig["aiBehavior"] = ["Default"];      // Use an array of behaviors as a stack (used for implementing "humanizing" reflex delay)
         this.aiConfig["aiProfile"] = "miner";           // TODO at some point, stop hardcoding this
         this.aiConfig["aiMaxLinearVel"] = 50;           // TODO tune this
         this.aiConfig["aiSqrAttackDist"] = 100 ** 2;     // Squared distance within which a ship will attack a target
         this.aiConfig["aiFireHalfAngle"] = 3;           // degrees
         this.aiConfig["aiVelCorrectDir"] = vec2.create();
         this.aiConfig["target"] = null;
+        this.aiConfig["aiReflex"] = { "delayRange": {"min": 150, "max": 250},
+                                      "delayInterval": 0,
+                                      "currTimestamp": 0,
+                                      "prevTimestamp": 0,
+                                      "reflexState": 0
+                                    };
+        // ^ delay range given in milliseconds because the DOMHighResTimeStamp object returned by performance.now() is in ms
+        // isReacting is a behavior lock - if the ship is reacting (e.g. changing behavior states), then we don't process behaviors
+        // reflexState can be:  0 = not started, 1 = active, 2 = finished/time has elapsed
 
         this.initializeAI(configObj["knowledge"]);
     }
@@ -310,7 +319,7 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
         // currently, the AI is designed to have only 1 behavior. We want states to be
         // properly able to set the aiBehavior upon enter or first update. So we clear
         // out the var on exit
-        parentShip.aiConfig["aiBehavior"] = "";
+        parentShip.aiConfig["aiBehavior"] = ["Default"];
         //console.log("Exit state PursueTarget");
     };
     aiStatePursueTarget.update = function(knowledge, dt_s = game.fixed_dt_s) {
@@ -341,16 +350,30 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
 
         var thVelTarget = MathUtils.angleBetween(normalizedVel, shipToTarget);
 
-        console.log("aiBehavior " + parentShip.aiConfig["aiBehavior"]);
+        var behaviorIndex = parentShip.aiConfig["aiBehavior"].length - 1;
+        console.log("aiBehavior " + parentShip.aiConfig["aiBehavior"][behaviorIndex] + ";\tlist:", parentShip.aiConfig["aiBehavior"]);
         
-        switch (parentShip.aiConfig["aiBehavior"]) {
-            case "":
-                parentShip.aiConfig["aiBehavior"] = "AlignToTarget";
-                // notice no break here
-                // if aiBehavior == "", we set it here, and then continue in this same update cycle to execute it
-                // this means that the state machine must reset aiBehavior to "" when appropriate
-                // aiBehavior constitutes a state machine-within-the-machine,  of sorts. We're hardcoding
+        switch (parentShip.aiConfig["aiBehavior"][behaviorIndex]) {
+            case "Default":
+                // aiBehavior constitutes a state machine-within-the-machine, of sorts. It's hard-coded
                 // aiBehavior transitions
+                parentShip.aiConfig["aiBehavior"].push("AlignToTarget");
+                parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
+                // NOTE that we push items onto the stack in the OPPOSITE order that we want to process them (Last-in, First-out)
+                break;
+
+            case "ReflexDelay":
+                if (parentShip.aiConfig["aiReflex"]["reflexState"] == 0) {
+                    parentShip.startReflexDelay();
+                } else if (parentShip.aiConfig["aiReflex"]["reflexState"] == 1) {
+                    parentShip.updateReflex();
+                } else if (parentShip.aiConfig["aiReflex"]["reflexState"] == 2) {
+                    parentShip.finishReflexDelay();
+
+                    // After finishing the delay, pop() to get the next behavior to execute
+                    parentShip.aiConfig["aiBehavior"].pop();
+                }
+                break;
 
             case "AlignToTarget":
                 // Align Heading to some target
@@ -361,15 +384,17 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
 
                 // Adjust turn/heading
                 // TODO don't hardcode the angles in the following if statements
-                if (thHeadingTarget > glMatrix.toRadian(5)) {
+                if (thHeadingTarget > glMatrix.toRadian(10)) {
                     // In the HTML5 Canvas coordinate system, a + rotation is to the right
                     // But it might be worth (at some point? if I feel like it?) renaming enableTurnRight/Left to enableTurnPos/Neg
                     parentShip.enableTurnRight();
-                } else if (thHeadingTarget < glMatrix.toRadian(-5)) {
+                } else if (thHeadingTarget < glMatrix.toRadian(-10)) {
                     parentShip.enableTurnLeft();
                 } else {
                     parentShip.disableTurn();
-                    parentShip.aiConfig["aiBehavior"] = "ThrustToPursueTarget";
+                    parentShip.aiConfig["aiBehavior"].pop();
+                    parentShip.aiConfig["aiBehavior"].push("ThrustToPursueTarget");
+                    parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
                 }
                 break;
 
@@ -390,9 +415,13 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
                     parentShip.disableThrust();
 
                     if ( Math.abs(thVelTarget) <= glMatrix.toRadian(45) ) {    // TODO don't hardcode threshold
-                        parentShip.aiConfig["aiBehavior"] = "Drift";
+                        parentShip.aiConfig["aiBehavior"].pop();
+                        parentShip.aiConfig["aiBehavior"].push("Drift");
+                        parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
                     } else {
-                        parentShip.aiConfig["aiBehavior"] = "AlignToCorrectVel";
+                        parentShip.aiConfig["aiBehavior"].pop();
+                        parentShip.aiConfig["aiBehavior"].push("AlignToCorrectVel");
+                        parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
                         vec2.set(parentShip.aiConfig["aiVelCorrectDir"], -normalizedVel[0], -normalizedVel[1]);
                     }
                 }
@@ -402,10 +431,11 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
                     // This state is meant to allow the spaceship to "do nothing" if it is already well-aligned with its target
                     if ( Math.abs(thVelTarget) > glMatrix.toRadian(60) ) {    // TODO don't hardcode threshold
                         // TODO possibly encapsulate into function. This code is identical to the code in ThrustToPursueTarget
-                        parentShip.aiConfig["aiBehavior"] = "AlignToCorrectVel";
+                        parentShip.aiConfig["aiBehavior"].pop();
+                        parentShip.aiConfig["aiBehavior"].push("AlignToCorrectVel");
+                        parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
                         vec2.set(parentShip.aiConfig["aiVelCorrectDir"], -normalizedVel[0], -normalizedVel[1]);
                     }
-                
                 break;
                 
             case "AlignToCorrectVel":
@@ -422,7 +452,9 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
                     parentShip.enableTurnLeft();
                 } else {
                     parentShip.disableTurn();
-                    parentShip.aiConfig["aiBehavior"] = "ThrustToAdjustVelocity";
+                    parentShip.aiConfig["aiBehavior"].pop();
+                    parentShip.aiConfig["aiBehavior"].push("ThrustToAdjustVelocity");
+                    parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
                 }
                 break;
 
@@ -433,7 +465,9 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
                     parentShip.enableThrust();
                 } else {
                     parentShip.disableThrust();
-                    parentShip.aiConfig["aiBehavior"] = "AlignToTarget";
+                    parentShip.aiConfig["aiBehavior"].pop();
+                    parentShip.aiConfig["aiBehavior"].push("AlignToTarget");
+                    parentShip.aiConfig["aiBehavior"].push("ReflexDelay");
                 }
                 break;
         }
@@ -521,8 +555,28 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
 };
 
 
+// TODO possibly move "start reaction delay" into an AI class
+Spaceship.prototype.startReflexDelay = function() {
+    this.aiConfig.aiReflex.delayInterval = Math.random() * (this.aiConfig.aiReflex.delayRange.max - this.aiConfig.aiReflex.delayRange.min) + this.aiConfig.aiReflex.delayRange.min;
+    this.aiConfig.aiReflex.currTimestamp = performance.now();
+    this.aiConfig.aiReflex.prevTimestamp = this.aiConfig.aiReflex.currTimestamp;
+    this.aiConfig.aiReflex.reflexState = 1;     // actively pausing to simulate reflex delay
+};
+
+Spaceship.prototype.updateReflex = function() {
+    this.aiConfig.aiReflex.currTimestamp = performance.now();
+    if ((this.aiConfig.aiReflex.currTimestamp - this.aiConfig.aiReflex.prevTimestamp) > this.aiConfig.aiReflex.delayInterval) {
+        this.aiConfig.aiReflex.reflexState = 2; // reflex delay time has elapsed
+    }
+};
+
+Spaceship.prototype.finishReflexDelay = function() {
+    this.aiConfig.aiReflex.reflexState = 0; // reflex state goes back to 0, which means "not started"
+};
+
 Spaceship.prototype.resetAI = function() {
-    this.aiConfig["aiBehavior"] = "";
+    // potential optimization: instead of assigning a new array here, pop all elements, instead of "Default"
+    this.aiConfig["aiBehavior"] = ["Default"];      // Use an array of behaviors as a stack (used for implementing "humanizing" reflex delay)
     this.components["ai"].start();
 };
 
