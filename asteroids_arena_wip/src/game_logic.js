@@ -4,7 +4,7 @@ function GameScoresAndStats() {
     this.kills = 0;
 }
 
-var jankyListOfScoreColors = ["orangered", "cyan"];
+var jankyListOfScoreColors = ["orangered", "cyan", "darkgray"];
 
 function GameLogic() {
 // TODO: Probably make the GameLogic class implement some interface that has the necessary functions that all GameLogic objects must have
@@ -58,6 +58,7 @@ GameLogic.prototype.initialize = function() {
     // ----- Initialize spaceships
     // TODO possibly make a Spaceship Manager or something similar - for when we add spaceship bots; or move this into a ship.initialize() function.. something
     // TODO don't hardcode the initial position -- use arena test for containment
+    // TODO don't hardcode the ship names (e.g. ship0); compute/generate those
     this.addGameObject("ship0", new Spaceship());
     var shipRef = this.gameObjs["ship0"];
     var shipConfigObj = { "imgObj": game.imgMgr.imageMap["ship0"].imgObj,
@@ -89,7 +90,8 @@ GameLogic.prototype.initialize = function() {
     shipConfigObj = { "imgObj": game.imgMgr.imageMap["ship1"].imgObj,
                       "initialPos": [650, 225],
                       "isAI": true,
-                      "knowledge": knowledgeObj
+                      "knowledge": knowledgeObj,
+                      "aiProfile": "miner"
                     };
     // TODO update ship.initialize() to take in a reference to the collision mgr and to the particle engines as part of the shipConfigObj being passed in. Then, move that stuff into initialize()
     shipRef.initialize(shipConfigObj);
@@ -104,6 +106,35 @@ GameLogic.prototype.initialize = function() {
 
     // NOTE: because of the way the game engine/framework is designed, we have to add individual spaceships as GameObjects (e.g., so they can get assigned an ObjectID), and then if we want to have a "shipDict", we have to have a list of references to the ship GameObjects
     this.shipDict[shipRef.objectID] = "ship1";
+
+
+    this.addGameObject("ship2", new Spaceship());
+    shipRef = this.gameObjs["ship2"];
+
+    var knowledgeObj = { "parentObj": shipRef,
+                         "gameLogic": this
+                       };
+
+    shipConfigObj = { "imgObj": game.imgMgr.imageMap["ship2"].imgObj,
+                      "initialPos": [550, 225],
+                      "isAI": true,
+                      "knowledge": knowledgeObj,
+                      "aiProfile": "hunter",
+                      "aiHuntRadius": 500
+                    };
+    // TODO update ship.initialize() to take in a reference to the collision mgr and to the particle engines as part of the shipConfigObj being passed in. Then, move that stuff into initialize()
+    shipRef.initialize(shipConfigObj);
+
+    this.collisionMgr.addCollider(shipRef.components["collision"]);   // Have to do the collision manager registration out here, because the spaceship is fully formed at this point (we can't do it in the spaceship constructor (in its current form) -- the parent obj is not passed in)
+
+    var spaceshipThrustPE = shipRef.components["thrustPE"];       // Get the spaceship's thrust particle emitter
+    spaceshipThrustPE.registerParticleSystem(this.gameObjs["thrustPS"]);
+
+    var spaceshipGunPE = shipRef.components["gunPE"];             // Get the spaceship's gun particle emitter
+    spaceshipGunPE.registerParticleSystem(this.gameObjs["bulletMgr"].components["gunPS"]);
+
+    // NOTE: because of the way the game engine/framework is designed, we have to add individual spaceships as GameObjects (e.g., so they can get assigned an ObjectID), and then if we want to have a "shipDict", we have to have a list of references to the ship GameObjects
+    this.shipDict[shipRef.objectID] = "ship2";
 
 
     // Create score keeping object

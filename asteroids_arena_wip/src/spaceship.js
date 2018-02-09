@@ -65,8 +65,9 @@ Spaceship.prototype.initialize = function(configObj) {
         this.aiControlled = true;
 
         this.aiConfig["aiBehavior"] = ["Default"];      // Use an array of behaviors as a stack (used for implementing "humanizing" reflex delay)
-        this.aiConfig["aiProfile"] = "miner";           // TODO at some point, stop hardcoding this
-        this.aiConfig["aiMaxLinearVel"] = 50;           // TODO tune this
+        this.aiConfig["aiProfile"] = configObj.hasOwnProperty["aiProfile"] ? configObj["aiProfile"] : "miner";  // default to miner behavior profile if we forget to specify
+        this.aiConfig["aiHuntRadius"] = configObj.hasOwnProperty["aiHuntRadius"] ? configObj["aiHuntRadius"] : null;
+        this.aiConfig["aiMaxLinearVel"] = 50;
         this.aiConfig["aiVelCorrectThreshold"] = 10;
         this.aiConfig["aiSqrAttackDist"] = 100 ** 2;     // Squared distance within which a ship will attack a target
         this.aiConfig["aiFireHalfAngle"] = 3;           // degrees
@@ -293,17 +294,78 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
         // Find the nearest target
         var parentObj = knowledge["parentObj"];
         if (parentObj.aiConfig["aiProfile"] == "miner") {
-            // find nearest asteroid
+            // find nearest object - prefer asteroids, but attack a ship if it's closer than the nearest asteroid
+            // TODO possibly wrap the target selection loops inside functions. We're duplicating code here
             var astMgr = knowledge["gameLogic"].gameObjs["astMgr"];
-            var minSqrDist = Number.MAX_SAFE_INTEGER;
 
+            var minSqrDistAst = Number.MAX_SAFE_INTEGER;
+            var potentialAstTarget = null;
             for (var asteroid of astMgr.components["asteroidPS"].particles) {
                 // Blah, why did I make the asteroids a subclass of particles?
                 if (asteroid.alive) {
-                    var sqDist = vec2.sqrDist(parentObj.components["physics"].currPos, asteroid.components["physics"].currPos);
-                    if (sqDist < minSqrDist) {
-                        minSqrDist = sqDist;
-                        parentObj.aiConfig["target"] = asteroid;
+                    var sqDistAst = vec2.sqrDist(parentObj.components["physics"].currPos, asteroid.components["physics"].currPos);
+                    if (sqDistAst < minSqrDistAst) {
+                        minSqrDistAst = sqDistAst;
+                        potentialAstTarget = asteroid;
+                    }
+                }
+            }
+
+            var minSqrDistShip = Number.MAX_SAFE_INTEGER;
+            var potentialShipTarget = null;
+            for (var shipDictIDKey in knowledge["gameLogic"].shipDict) {
+                // Iterate over ships that aren't my ship ("I" am an AI, not a ship)
+                if (parentObj.objectID != shipDictIDKey) {
+                    var gameObjIDName = knowledge["gameLogic"].shipDict[shipDictIDKey];
+                    var shipRef = knowledge["gameLogic"].gameObjs[gameObjIDName];
+
+                    // TODO - add some kind of after-death delay so we don't target a ship that just respawned
+                    sqDistShip = vec2.sqrDist(parentObj.components["physics"].currPos, shipRef.components["physics"].currPos);
+                    if (sqDistShip < minSqrDistShip) {
+                        minSqrDistShip = sqDistShip;
+                        potentialShipTarget = shipRef;
+                    }
+                }
+            }
+            
+            // Target the nearest asteroid, unless a ship is closer
+            parentObj.aiConfig["target"] = sqDistAst <= sqDistShip ? potentialAstTarget : potentialShipTarget;
+
+        } else if (parentObj.aiConfig["aiProfile"] == "hunter") {
+            // find nearest ship and go after it. Only prefer an asteroid if there are no ships within the hunt radius
+            var minSqrDistShip = Number.MAX_SAFE_INTEGER;
+
+            var sqDistShip = 0;
+            var potentialShipTarget = null;
+            for (var shipDictIDKey in knowledge["gameLogic"].shipDict) {
+                // Iterate over ships that aren't my ship ("I" am an AI, not a ship)
+                if (parentObj.objectID != shipDictIDKey) {
+                    var gameObjIDName = knowledge["gameLogic"].shipDict[shipDictIDKey];
+                    var shipRef = knowledge["gameLogic"].gameObjs[gameObjIDName];
+
+                    // TODO - add some kind of after-death delay so we don't target a ship that just respawned
+                    sqDistShip = vec2.sqrDist(parentObj.components["physics"].currPos, shipRef.components["physics"].currPos);
+                    if (sqDistShip < minSqrDistShip) {
+                        minSqrDistShip = sqDistShip;
+                        potentialShipTarget = shipRef;
+                    }
+                }
+            }
+
+            // If the nearest ship is outside the hunt radius, then go for asteroids
+            if (minSqrDistShip >= parentObj.aiConfig["aiHuntRadius"] * parentObj.aiConfig["aiHuntRadius"]) {
+                var astMgr = knowledge["gameLogic"].gameObjs["astMgr"];
+
+                var minSqrDistAst = Number.MAX_SAFE_INTEGER;
+                var potentialAstTarget = null;
+                for (var asteroid of astMgr.components["asteroidPS"].particles) {
+                    // Blah, why did I make the asteroids a subclass of particles?
+                    if (asteroid.alive) {
+                        var sqDistAst = vec2.sqrDist(parentObj.components["physics"].currPos, asteroid.components["physics"].currPos);
+                        if (sqDistAst < minSqrDistAst) {
+                            minSqrDistAst = sqDistAst;
+                            potentialAstTarget = asteroid;
+                        }
                     }
                 }
             }

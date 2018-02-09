@@ -1,10 +1,6 @@
 function Arena () {
     GameObject.call(this);
 
-    // TODO make arena a collection of render components and collision components
-    // We want the arenas to be a contained in polygonal area. The polygon can be any shape (defined by an array of segments.. Or maybe vertex/edges)
-    // We also need new collision geoms - line segments
-
     // In this early version, the arena will simply be a rectangle. We can use AABBs for the arena's boundaries (which will be 2 vertical and 2 horizontal)
     // If we continue into later versions, we should have a general polygonal shape; maybe use the separating axis theorem
 
@@ -107,7 +103,6 @@ Arena.prototype.addLineSegment = function(startPt, endPt) {
     vec2.transformMat2(normal, direction, rotMat);
 
 
-    // TODO: review code. I _believe_ I want to clone startPt here; but it may be ok to use the passed-in param
     var lineSegData = { "startPt": vec2.clone(startPt),
                         "direction": direction,
                         "normal": normal

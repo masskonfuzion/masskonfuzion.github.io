@@ -10,7 +10,7 @@ GameStatePlaying.prototype.initialize = function() {
 };
 
 GameStatePlaying.prototype.cleanup = function() {
-    // TODO implement cleanup (maybe empty out some arrays? Of course, JS is garbage-collected, so... maybe do nothing :-D)
+    // implement cleanup (maybe empty out some arrays? Of course, JS is garbage-collected, so... maybe do nothing :-D)
 };
 
 // Do things before rendering the scene (e.g.:
