@@ -139,7 +139,7 @@ GameLogic.prototype.initialize = function() {
     // ----- Initialize Asteroid Manager
     this.addGameObject("astMgr", new AsteroidManager());
     var astMgrRef = this.gameObjs["astMgr"];
-    astMgrRef.initialize(1, 64);
+    astMgrRef.initialize(1, 32);
 
     // ----- Initialize Arena
     this.addGameObject("arena", new Arena());
