@@ -38,7 +38,7 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
 
     // Notes on bannedLocations:
     //  - We're probably taking references to the ship's (or ships') position(s), which is what we want
-    var bannedLocations = this.createBannedLocationsList(100);  // The parameter is the radius from each banned location, within which asteroids cannot be spawned
+    var bannedLocations = this.createBannedLocationsList(150);  // The parameter is the radius from each banned location, within which asteroids cannot be spawned
     for (var i = 0; i < initAsteroids; i++) {
         // Note the "funcCalls" property - "params" is a list that, when passed into a function.apply() call, is "splatted" into individual parameters, similar to Python *args
         var configObj = { "renderCompType": "image",
@@ -73,7 +73,7 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
         myEmitter.setPosition(spawnPos[0], spawnPos[1]);
         myEmitter.setVelocityRange(1.0, 5.0);   // TODO Confirm.. do I really need this here? I thought I only needed to set the velocity range one time, in the initialize function
 
-        var bannedLocations = this.createBannedLocationsList(50);
+        var bannedLocations = this.createBannedLocationsList(150);
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
                           "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ],
@@ -145,7 +145,7 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         this.activeAsteroids[astToDisable.size] -= 1;
 
         //var bannedLocations = [ {"position": this.parentObj.gameObjs["ship0"].components["physics"].currPos, "radius": 50 } ];
-        var bannedLocations = this.createBannedLocationsList(50);
+        var bannedLocations = this.createBannedLocationsList(150);
         // TODO trigger a particle explosion
         if (astToDisable.size > 0) {
             var newSize = astToDisable.size - 1;

@@ -14,6 +14,7 @@ var MathUtils = {};
 // - vecA and vecB are two normalized vectors
 // NOTE:
 // - surprisingly, glMatrix does not provide any functions to determine the angle between 2 vectors
+// TODO come up with a way to handle 0 vectors -- they have no length, so there's no valid way to get the angle beween them and another vector. Maybe return -maxint to indicate an invalid value
 MathUtils.angleBetween = function (vecA, vecB) {
     // Use the property of the dot product that dot(A,B) = ||A||*||B||*cos(theta);
     // If A and B are normalized, then ||A|| = ||B|| = 1. So they drop out, and you're left with: dot(A,B) = cos(theta)
@@ -26,4 +27,10 @@ MathUtils.angleBetween = function (vecA, vecB) {
     var sign = vec2.dot(normA, vecB) > 0 ? 1 : -1;
 
     return sign * radians;
+};
+
+MathUtils.lerp = function(i, min, max) {
+    // 1-dimensional (scalar) linear interpolation
+    // i must be a value between 0 and 1, inclusive
+    return min + (max - min) * i;
 };

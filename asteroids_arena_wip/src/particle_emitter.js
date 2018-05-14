@@ -111,7 +111,7 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
                 var offsetAngle = 0;    // degrees
                 var offsetVec = vec2.create();
                 
-                var emitterPosIsValid = false;
+                var emitterPosIsValid = true;
                 for (var bannedLoc of config["bannedLocations"]) {
                     emitterPosIsValid = vec2.squaredDistance(this.position, bannedLoc["position"]) > bannedLoc["radius"]*bannedLoc["radius"];
                     if (!emitterPosIsValid) {

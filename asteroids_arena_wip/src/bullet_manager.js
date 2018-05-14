@@ -79,7 +79,6 @@ BulletManager.prototype.disableBullet = function(dictObj) {
     // reminder that the object passed in is a dict / associative array
     
     var bullet = dictObj["bulletToDisable"];
-    bullet.alive = false;
     // NOTE: Another (better?) way to particles access to the collision manager that manages their colliders is to simply give the particles a reference to the particle system they belong to
     bullet.disable( {"collisionMgrRef": this.components["gunPS"].collisionMgrRef} );   // call into the bullet's parent class (i.e., Particle's) disable function
                         // TODO - move this to Trello: Possibly move collider disable logic from base Particle class into specific Bullet & Asteroid classes? Maybe?

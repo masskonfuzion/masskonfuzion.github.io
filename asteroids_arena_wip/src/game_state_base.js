@@ -1,3 +1,4 @@
+// TODO at some point, maybe change "GameState..." to "ApplicationState..." The idea is that a "Game/Application State" represents a separate phase of program execution (playing game, main menu, etc)
 function GameStateBase() {
     this._name = ""; // Set this._name in subclass constructors
 
@@ -55,3 +56,5 @@ GameStateBase.prototype.postRender = function(canvasContext, dt_s) {
 // Can be coded to handle input directly, or can be a wrapper around an internal game logic object's input handler
 GameStateBase.prototype.handleKeyboardInput = function(evt) {
 };
+
+// TODO add mouse / other input handling

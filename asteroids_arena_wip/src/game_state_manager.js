@@ -1,6 +1,12 @@
 function GameStateManager() {
+    this.stateMap = {};     // Mapping of state names (maybe nicknames?) to GameState objects
     this.states = [];       // A stack, implemented with an Array object
 }
+
+GameStateManager.prototype.addState = function(stateName, stateObj) {
+    // NOTE: in JS, basically every object is created on the heap, so we're assigning a reference to the object, and we don't need to worry about copying/deepcopying objects
+    this.stateMap[stateName] = stateObj;
+};
 
 // TODO add touch event handlers to the [change/pause/resume]State functions (maybe encapsulate the add/remove calls into functions)
 // Change from current state to toState
@@ -49,5 +55,5 @@ GameStateManager.prototype.pushState = function(state) {
 
 // pop the state from the top of the stack
 GameStateManager.prototype.popState = function(state) {
-    return retState = this.states.pop();
+    return this.states.pop();
 };

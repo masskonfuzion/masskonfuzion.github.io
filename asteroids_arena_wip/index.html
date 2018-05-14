@@ -12,6 +12,11 @@
         /*src: url('assets/fonts/astron_boy.ttf');*/
         src: url('assets/fonts/led_counter-7.ttf');
     }
+
+    @font-face {
+        font-family: 'MenuFont';
+        src: url('assets/fonts/astron_boy.ttf');
+    }
     </style>
 </head>
 
@@ -22,11 +27,14 @@
 <script src="src/queue_base.js" type="text/javascript"></script>
 <script src="src/message_queue.js" type="text/javascript"></script>
 <script src="src/image_manager.js" type="text/javascript"></script>
+<script src="src/ui_item_base.js" type="text/javascript"></script>
+<script src="src/ui_item_text.js" type="text/javascript"></script>
 <script src="src/game_object.js" type="text/javascript"></script>
 <script src="src/game_object_component.js" type="text/javascript"></script>
 <script src="src/game_state_base.js" type="text/javascript"></script>
 <script src="src/game_state_manager.js" type="text/javascript"></script>
 <script src="src/game_state_playing.js" type="text/javascript"></script>
+<script src="src/game_state_main_menu.js" type="text/javascript"></script>
 <script src="src/game_logic.js" type="text/javascript"></script>
 <script src="src/finite_state_machine.js" type="text/javascript"></script>
 <script src="src/physics_component.js" type="text/javascript"></script>
@@ -48,7 +56,11 @@
 var game = new GameApplication(800, 450);   // Global scope
 var frameID = null;
 var gameStatePlaying = new GameStatePlaying();
-var gameStateMgr = new GameStateManager();
+var gameStateMainMenu = new GameStateMainMenu();
+
+var gameStateMgr = new GameStateManager();  // TODO make game states belong to the manager?
+gameStateMgr.addState("Playing", gameStatePlaying);     // TODO consider constructing game states in the GameStateManager scope? States are currently global vars, but could just easily be local to the manager
+gameStateMgr.addState("MainMenu", gameStateMainMenu);     
 
 
 // Trap keyboard events and forward them to game logic
@@ -78,7 +90,7 @@ function mainEntryPoint() {
     game.imgMgr.addImgToMap("astSmall", imgAsset_astSmall);
 
     // NOTE: all image loading must be done before initializing any GameStates (and/or any GameLogic objects) that might use images
-    gameStateMgr.changeState(gameStatePlaying);
+    gameStateMgr.changeState(gameStateMainMenu);
 
     start();
 }
@@ -114,10 +126,9 @@ function stop()
 function mainloop(timestamp)
 {
     // NOTE requestAnimationFrame passes in a timestamp into the function being called
+    game.timer.doFrameTimer(timestamp);
 
     var currState = gameStateMgr.currState();
-
-    game.timer.doFrameTimer(timestamp);
 	while (game.timer.elapsed >= game.fixed_dt_s) {
         currState.preRender(game.context, game.fixed_dt_s);
 

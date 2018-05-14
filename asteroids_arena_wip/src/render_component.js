@@ -62,10 +62,10 @@ RenderComponentCircle.prototype.constructor = RenderComponentCircle;
 // This is so that the render component group can draw any component without having to pass parameters
 RenderComponentCircle.prototype.draw = function(canvasContext) {
     canvasContext.beginPath();
-    canvasContext.arc(0, 0, this.radius, 0, Math.PI * 2, false);    // We're drawing at 0,0; make sure to set the canvas translate transform before drawing circles
+    canvasContext.arc(0, 0, this.radius, 0, Math.PI * 2);    // We're drawing at 0,0; make sure to set the canvas translate transform before drawing circles
     canvasContext.fillStyle = 'rgb(' + Math.floor(this.color[0]) + ', ' + Math.floor(this.color[1]) + ', ' + Math.floor(this.color[2]) + ')';
     canvasContext.fill();   // You can also use stroke() here for a circle outline; to set color, use strokeStyle
-    //canvasContext.closePath();
+    canvasContext.closePath();
     // apparently stroke() or fill() end the path
 };
 
@@ -163,7 +163,7 @@ RenderComponentLine.prototype.draw = function(canvasContext) {
     canvasContext.lineTo(this.endPt[0], this.endPt[1]);
     canvasContext.strokeStyle = 'rgb(' + Math.floor(this.color[0]) + ', ' + Math.floor(this.color[1]) + ', ' + Math.floor(this.color[2]) + ')';
     canvasContext.stroke();   // You can also use stroke() here for a circle outline; to set color, use strokeStyle
-    //canvasContext.closePath();
+    canvasContext.closePath();
     // apparently stroke() or fill() end the path
 };
 
