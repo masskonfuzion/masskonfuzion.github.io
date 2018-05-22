@@ -37,6 +37,7 @@ ParticleSystem.prototype.getNextUsableParticle = function(maxLoops = 3) {
     var loops = 0;
     var i = (this.lastUsedIndex + 1) % this.particles.length;
 
+    // TODO remove loop when searching for usable particle. A loop would be useful if we were dropping back into update to allow particles to expire, before searching again. Here, we're not doing that.
     while (this.particles[i].alive) {
         if (i == this.lastUsedIndex) {
             loops += 1;

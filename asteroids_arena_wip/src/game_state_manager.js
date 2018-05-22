@@ -9,6 +9,7 @@ GameStateManager.prototype.addState = function(stateName, stateObj) {
 };
 
 // TODO add touch event handlers to the [change/pause/resume]State functions (maybe encapsulate the add/remove calls into functions)
+// TODO make sure that when we change state, we do it as the very last thing that happens in the game loop (i.e. after all updates/renders, before next update
 // Change from current state to toState
 GameStateManager.prototype.changeState = function(toState) {
     // TODO encapsulate the mgmt further into helper functions. e.g., changeState and resumeState have the same "current state deactivation" code

@@ -583,7 +583,7 @@ SpaceshipAI.prototype.aiBehaviorSelectTarget = function() {
 
         var minSqrDistAst = Number.MAX_SAFE_INTEGER;
         var potentialAstTarget = null;
-        for (var asteroid of astMgr.components["asteroidPS"].particles) {
+        for (var asteroid of astMgr.asteroids) {
             // Blah, why did I make the asteroids a subclass of particles?
             if (asteroid.alive) {
                 var sqDistAst = vec2.sqrDist(parentShip.components["physics"].currPos, asteroid.components["physics"].currPos);
@@ -644,7 +644,7 @@ SpaceshipAI.prototype.aiBehaviorSelectTarget = function() {
             var minSqrDistAst = Number.MAX_SAFE_INTEGER;
             var sqDistAst = 0;
             var potentialAstTarget = null;
-            for (var asteroid of astMgr.components["asteroidPS"].particles) {
+            for (var asteroid of astMgr.asteroids) {
                 // Blah, why did I make the asteroids a subclass of particles?
                 if (asteroid.alive) {
                     sqDistAst = vec2.sqrDist(parentShip.components["physics"].currPos, asteroid.components["physics"].currPos);
@@ -821,7 +821,11 @@ SpaceshipAI.prototype.aiBehaviorAttackTarget = function() {
 
     var target = parentShip.aiConfig["target"];
     if (target) {
-        parentShip.enableFireA();   // TODO add secondary weapons?
+
+        // Allow the spaceship to fire only if it is "enabled" (i.e. not currently in the spawning/recovery state)
+        if (parentShip.ableState == SpaceshipAbleStateEnum.enabled) {
+            parentShip.enableFireA();   // TODO add secondary weapons?
+        }
 
         // Transitions
         if (parentShip.aiConfig["decisionLogic"].alignedToTargetVector) {
