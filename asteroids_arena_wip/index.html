@@ -36,6 +36,8 @@
 <script src="src/game_state_playing.js" type="text/javascript"></script>
 <script src="src/game_state_main_menu.js" type="text/javascript"></script>
 <script src="src/game_state_credits.js" type="text/javascript"></script>
+<script src="src/game_state_how_to_play.js" type="text/javascript"></script>
+<script src="src/game_state_settings.js" type="text/javascript"></script>
 <script src="src/game_logic.js" type="text/javascript"></script>
 <script src="src/finite_state_machine.js" type="text/javascript"></script>
 <script src="src/physics_component.js" type="text/javascript"></script>
@@ -56,14 +58,18 @@
 <script type="text/javascript">
 var game = new GameApplication(800, 450);   // Global scope
 var frameID = null;
-var gameStatePlaying = new GameStatePlaying();      // TODO -- make the game states lazy load? (immediately-invoked function expression?)
+var gameStatePlaying = new GameStatePlaying();      // TODO -- make the game states lazy load? (immediately-invoked function expression?). Or, another idea is to create a new state when switching to it. That enables garbage collection of states
 var gameStateMainMenu = new GameStateMainMenu();
 var gameStateCredits = new GameStateCredits();
+var gameStateHowToPlay = new GameStateHowToPlay();
+var gameStateSettings = new GameStateSettings();
 
 var gameStateMgr = new GameStateManager();  // TODO make game states belong to the manager?
 gameStateMgr.addState("Playing", gameStatePlaying);     // TODO consider constructing game states in the GameStateManager scope? States are currently global vars, but could just easily be local to the manager
-gameStateMgr.addState("MainMenu", gameStateMainMenu);     
-gameStateMgr.addState("Credits", gameStateCredits);     
+gameStateMgr.addState("MainMenu", gameStateMainMenu);
+gameStateMgr.addState("Credits", gameStateCredits);
+gameStateMgr.addState("HowToPlay", gameStateHowToPlay);
+gameStateMgr.addState("Settings", gameStateSettings);
 
 
 // Trap keyboard events and forward them to game logic

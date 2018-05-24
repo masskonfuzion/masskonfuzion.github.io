@@ -8,6 +8,29 @@ var CollisionComponentTypeEnum = { "circle": 0,
 
 
 //================================================================================
+//Plane
+//================================================================================
+function Plane() {
+    this.d = vec2.create();     // Direction of the plane
+    this.n = vec2.create();     // Surface normal
+}
+
+
+// Compute a plane (point and normal) from two points in 2D space
+// n is computed so that n = [0,1] if d = [1,0] (i.e. +90 deg rotation)
+// (where d = ptB - ptA)
+Plane.prototype.createFromPoints = function(ptA, ptB) {
+    // Compute d (direction)
+    vec2.sub(this.d, ptB, ptA);
+    vec2.normalize(this.d, this.d);
+
+    // Compute n (normal) -- +90 deg rotation
+    // Use the shortcut - [1,0] rotates to [0,1]; [0,1] rotates to [-1,0]; [-1,0] rotates to [0,-1]
+    // n is normalized already, because we're simply rotating an already normalized vector
+    vec2.set(this.n, -this.d[1], this.d[0])
+};
+
+//================================================================================
 //AABB
 //================================================================================
 function CollisionComponentAABB() {
@@ -20,7 +43,7 @@ function CollisionComponentAABB() {
 
     this.minPt = vec2.create();
     this.maxPt = vec2.create();
-};
+}
 
 CollisionComponentAABB.prototype = Object.create(GameObjectComponent.prototype);
 CollisionComponentAABB.prototype.constructor = CollisionComponentAABB;

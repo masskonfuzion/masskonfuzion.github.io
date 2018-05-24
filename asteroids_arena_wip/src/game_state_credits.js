@@ -2,7 +2,8 @@ function GameStateCredits() {
     GameStateBase.call(this);
     this.uiItems = [];
 
-    this.uiItems.push( new uiItemText("Mass KonFuzion did everything...", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle") );  // Currently, stateName is the name of the state obj (var) in the global scope
+    // TODO maybe keep a 2nd list of "selectable UI items". Then, change the uiItems.push call into a call that encapsulates adding the item to the displayable UI items list, vs the selectable UI items list. (i.e., some items are meant to be displayed only)
+    this.uiItems.push( new uiItemText("Mass KonFuzion did everything...", "32px", "MenuFont", "white", 0.5, 0.72, "center", "middle") );  // Currently, stateName is the name of the state obj (var) in the global scope
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 
     this.activeItemIndex = 0;
@@ -38,8 +39,9 @@ GameStateCredits.prototype.render = function(canvasContext, dt_s) {
     // Set the transform for the image
     canvasContext.save();
     canvasContext.setTransform(1,0,0,1,400,150);    // Reset transformation (similar to OpenGL loadIdentity() for matrices) TODO maybe don't hardcode image coordinates
-    // Render a graphic
-    var imgObj = game.imgMgr.imageMap["dab"].imgObj;    // Dab on 'em
+    
+    // Dab on 'em
+    var imgObj = game.imgMgr.imageMap["dab"].imgObj;    // TODO I hate the syntax of getting an img object. Change it/wrap it in a function call. Do something. Fix it!!
     canvasContext.drawImage(imgObj, -imgObj.width / 2, -imgObj.height / 2);
 
     canvasContext.restore();    // "pop" the transform
