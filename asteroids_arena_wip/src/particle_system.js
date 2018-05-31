@@ -34,18 +34,14 @@ ParticleSystem.prototype.initialize = function(numParticles) {
 // Wrap back to beginning if the end of the list is reached
 // Return null if you've looped through the particle array a certain number of times and not found a usable particle
 ParticleSystem.prototype.getNextUsableParticle = function(maxLoops = 3) {
-    var loops = 0;
     var i = (this.lastUsedIndex + 1) % this.particles.length;
 
-    // TODO remove loop when searching for usable particle. A loop would be useful if we were dropping back into update to allow particles to expire, before searching again. Here, we're not doing that.
     while (this.particles[i].alive) {
-        if (i == this.lastUsedIndex) {
-            loops += 1;
-            if (loops == maxLoops) {
-                return null;
-            }
-        }
         i = (i + 1) % this.particles.length;
+        if (i == this.lastUsedIndex) {
+            // If we're here, then every asteroid in the pool is currently active
+            return null;
+        }
     }
 
     this.lastUsedIndex = i;

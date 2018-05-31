@@ -7,6 +7,9 @@ function GameScoresAndStats() {
 var jankyListOfScoreColors = ["orangered", "cyan", "darkgray"];
 
 function GameLogic() {
+    
+    GameObject.call(this);
+
 // TODO: Probably make the GameLogic class implement some interface that has the necessary functions that all GameLogic objects must have
     this.collisionMgr = null;   // Placeholder for a collision manager (definition probably belongs in base/interface class)
     this.gameObjs = {};
@@ -16,7 +19,15 @@ function GameLogic() {
     this.objectIDToAssign = -1;  // probably belongs in the base class.
     this.settings = { "hidden": {}, "visible": {} };    // hidden settings are, e.g. point values for accomplishing certain goals; visible settings are, e.g. game config options
     this.gameStats = {};    // store things, e.g. player's score, in-game achievements, state variables, etc.
+
+    this.addComponent("xplodPE", new ParticleEmitter());
+
+    this.commandMap["createExplosion"] = this.createExplosion;
 }
+
+GameLogic.prototype = Object.create(GameObject.prototype);
+GameLogic.prototype.constructor = GameLogic;
+
 
 GameLogic.prototype.initialize = function() {
     // Key control map is keyed on keypress event "code", e.g. "KeyW" (as opposed to "keyCode", which is a number, like 87)
@@ -50,6 +61,23 @@ GameLogic.prototype.initialize = function() {
     this.addGameObject("thrustPS", new ParticleSystem());
     var thrustPSRef = this.gameObjs["thrustPS"];
     thrustPSRef.initialize(1024);
+
+    // ----- Initialize explosion particle system
+    this.addGameObject("xplodPS", new ParticleSystem());
+    var xplodPSRef = this.gameObjs["xplodPS"];
+    xplodPSRef.initialize(512);
+
+
+    var xplodPERef = this.components["xplodPE"];
+    xplodPERef.registerParticleSystem(this.gameObjs["xplodPS"]);
+    xplodPERef.setVelocityRange(40.0, 60.0);
+    xplodPERef.setTTLRange(0.5, 1.0);         // seconds
+    xplodPERef.setLaunchDir(1.0, 0.0);        // launch base dir is the vector [1,0]
+    xplodPERef.setAngleRange(0.0, 359.0);     // rotate the base launch dir by some amount
+    xplodPERef.setMinColor(128, 128, 128);    // rgb values (TODO set colors based on ship color)
+    xplodPERef.setMaxColor(255, 255, 255);    // rgb values (TODO set colors based on ship color)
+
+
 
     // ----- Initialize Bullet Manager system
     // Note: bullet mgr has to come before spaceship so that spaceship can register as a bullet emitter
@@ -388,6 +416,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
     // TODO put some data into collision objects to determine which objects should collide with which others. Objects certain types might not need to collide with each other (e.g. arena walls with other arena walls; bullets fired by a ship with the ship itself)
 
     var cmdMsg = {}
+    var numParticles = 0;   // placeholder; will be initialized wherever necessary
 
     if (gameObjAType == "Spaceship" && gameObjBType == "Asteroid" || gameObjBType == "Spaceship" && gameObjAType == "Asteroid") {
         //console.log("We have a collision between a spaceship and an asteroid")
@@ -405,12 +434,33 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
         // The collision can only count if the spaceship is both alived and "enabled" (i.e., not in the middle of a respawn)
         if (spaceshipRef.ableState == SpaceshipAbleStateEnum.enabled) {
+            // TODO rework GameCommand so that the caller doesn't need to know which object will handle the game command.  Have handlers register with the GameLogic obj, so the caller can simply put the GameCommand out
+            numParticles = (asteroidRef.size + 1) * 8;  // The multiplier is a magic number; chosen because it created visually pleasing explosions, without too much performance hit
+            cmdMsg = { "topic": "GameCommand",
+                       "command": "createExplosion",
+                       "targetObj": this,
+                       "params": { "numParticles": numParticles,
+                                   "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ]
+                                 }
+                     };
+            this.messageQueue.enqueue(cmdMsg);
+
+            numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
+
+            var saveShipPos = vec2.clone(spaceshipRef.components["physics"].currPos);
+            cmdMsg = { "topic": "GameCommand",
+                       "command": "createExplosion",
+                       "targetObj": this,
+                       "params": { "numParticles": numParticles,
+                                   "center": [ saveShipPos[0], saveShipPos[1] ]
+                                 }
+                     };
+            this.messageQueue.enqueue(cmdMsg);
+
             var fragRefDir = vec2.create();   // Create collision normal out here, and pass into the disableAndSpwan call (so we can get fancy with collision normals, e.g., with spaceship surfaces
             vec2.sub(fragRefDir, spaceshipRef.components["physics"].currPos, spaceshipRef.components["physics"].prevPos);
             vec2.normalize(fragRefDir, fragRefDir);
-
             // Note: in params, disableList is a list so we can possibly disable multiple asteroids at once; numToSpawn is the # of asteroids to spawn for each disabled asteroid. Can maybe be controlled by game difficulty level.
-            // TODO rework GameCommand so that the caller doesn't need to know which object will handle the game command.  Have handlers register with the GameLogic obj, so the caller can simply put the GameCommand out
             cmdMsg = { "topic": "GameCommand",
                        "command": "disableAndSpawnAsteroids",
                        "targetObj": this.gameObjs["astMgr"],
@@ -421,6 +471,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             this.messageQueue.enqueue(cmdMsg);  // NOTE: we do this here, and not in the next outer scope because we only want to enqueue a message onto the message queue if an actionable collision occurred
 
             // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
+            // TODO make spawnAtNewLocation an enqueueable object.. that way, we can pass the ship's pos into the createExplosion call above. What's happening now is: We enqueue the explosion for later, but respawn now. So by the time we trigger the explosion, the ship's position is the respawn position
             this.spawnAtNewLocation(spaceshipRef, 75);
 
             var shipName = this.shipDict[spaceshipRef.objectID];    // NOTE: I hate that JS doesn't care that spaceshipObjectID is a string, but the keys in the dict/obj are int/float
@@ -466,6 +517,17 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                  };
         this.messageQueue.enqueue(cmdMsg);
 
+        // TODO for the particle explosion, add parameters to set number of particles, color, and maybe velocity, etc.
+
+        numParticles = (asteroidRef.size + 1) * 8;  // The multiplier is a magic number; chosen because it created visually pleasing explosions, without too much performance hit
+        cmdMsg = { "topic": "GameCommand",
+                   "command": "createExplosion",
+                   "targetObj": this,
+                   "params": { "numParticles": numParticles,
+                               "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ]
+                             }
+                 };
+        this.messageQueue.enqueue(cmdMsg);
 
         // Note: in params, disableList is a list so we can possibly disable multiple asteroids at once; numToSpawn is the # of asteroids to spawn for each disabled asteroid. Can maybe be controlled by game difficulty level.
         cmdMsg = { "topic": "GameCommand",
@@ -496,9 +558,6 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             if (bulletRef.emitterID == spaceshipRef.components["gunPE"].emitterID) {
                 //console.log("Skipping " + gameObjAType + "/" + gameObjBType + " collision because of self-shot prevention");
             } else {
-                // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
-                this.spawnAtNewLocation(spaceshipRef, 75);
-
                 var shooterObjectID = this.lookupObjectID(bulletRef.emitterID, "Spaceship");
                 var shooterName = this.shipDict[shooterObjectID];  // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
                     // If ship0 is the shooter, then increment human player's kills (TODO think about scaling up for local multiplayer?)
@@ -510,12 +569,27 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                 this.gameStats[victimName].deaths += 1;
                 this.gameStats[victimName].score = Math.max(0, this.gameStats[victimName].score + this.settings["hidden"]["pointValues"]["death"]);
 
+                numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
+                var saveShipPos = vec2.clone(spaceshipRef.components["physics"].currPos);
+                cmdMsg = { "topic": "GameCommand",
+                           "command": "createExplosion",
+                           "targetObj": this,
+                           "params": { "numParticles": numParticles,
+                                       "center": [ saveShipPos[0], saveShipPos[1] ]
+                                     }
+                         };
+                this.messageQueue.enqueue(cmdMsg);
+
                 cmdMsg = { "topic": "GameCommand",
                            "command": "disableBullet",
                            "targetObj": this.gameObjs["bulletMgr"],
                            "params": { "bulletToDisable": bulletRef }
                          };
                 this.messageQueue.enqueue(cmdMsg);
+
+                // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
+                this.spawnAtNewLocation(spaceshipRef, 75);
+
             }
         }
     } else if (gameObjAType == "Arena" && gameObjBType == "Bullet" || gameObjBType == "Arena" && gameObjAType == "Bullet") {
@@ -532,6 +606,16 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             arenaRef = msg.colliderB.parentObj;
             asteroidRef = msg.colliderA.parentObj;
         }
+
+        numParticles = (asteroidRef.size + 1) * 8;  // The multiplier is a magic number; chosen because it created visually pleasing explosions, without too much performance hit
+        cmdMsg = { "topic": "GameCommand",
+                   "command": "createExplosion",
+                   "targetObj": this,
+                   "params": { "numParticles": numParticles,
+                               "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ]
+                             }
+                 };
+        this.messageQueue.enqueue(cmdMsg);
 
         var cmdMsg = { "topic": "GameCommand",
                        "command": "disableAsteroids",
@@ -551,6 +635,17 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             spaceshipRef = msg.colliderA.parentObj;
         }
         // TODO implement a "spawning" state -- maybe render some cool VFX and do a countdown or something
+
+        numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
+        var saveShipPos = vec2.clone(spaceshipRef.components["physics"]);
+        cmdMsg = { "topic": "GameCommand",
+                   "command": "createExplosion",
+                   "targetObj": this,
+                   "params": { "numParticles": numParticles,
+                               "center": [ saveShipPos[0], saveShipPos[1] ]
+                             }
+                 };
+        this.messageQueue.enqueue(cmdMsg);
 
         // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
         this.spawnAtNewLocation(spaceshipRef, 75);
@@ -648,6 +743,29 @@ GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
     queryObj.resetSpawnClock();
 }
 
+
+GameLogic.prototype.createExplosion = function(params) {
+    // numParticles is required
+    var xplodPERef = this.components["xplodPE"];
+    for (var i = 0; i < params.numParticles; i++)
+    {
+        // NOTE: I'm seeing that the particle emitter design tries to do too much, and ends up removing granularity of control
+        // "center" is required
+        xplodPERef.setPosition(params.center[0], params.center[1]);
+        xplodPERef.emitParticle(game.fixed_dt_s);
+    }
+};
+
+
+// Override the class default executeCommand()
+// .. but maybe this version should be the base
+GameLogic.prototype.executeCommand = function(cmdMsg, params) {
+    //console.log("Spaceship executing command");
+    //console.log(cmdMsg);
+
+    // Call function
+    this.commandMap[cmdMsg].call(this, params); // use call() because without it, we're losing our "this" reference (going from Spaceship to Object)
+};
 
 GameLogic.prototype.doUICommand = function(msg) {
     // Take action on a message with topic, "UICommand"

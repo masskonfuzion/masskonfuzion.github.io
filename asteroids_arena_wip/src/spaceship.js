@@ -216,6 +216,7 @@ Spaceship.prototype.update = function(dt_s, config = null) {
 };
 
 // Override the class default executeCommand()
+// .. but maybe this version should be the base
 Spaceship.prototype.executeCommand = function(cmdMsg, params) {
     //console.log("Spaceship executing command");
     //console.log(cmdMsg);

@@ -196,7 +196,6 @@ ParticleEmitter.prototype.setRandomParticleColor = function(particle) {
 // Set the color of the Particle's render component
 // (this only works if the render component is something we can set the color of, e.g., circle, square -- primitive shapes
 ParticleEmitter.prototype.setParticleColor = function(particle, r, g, b) {
-    
     particle.components["render"].setColor(r, g, b);
 };
 

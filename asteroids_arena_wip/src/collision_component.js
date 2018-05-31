@@ -3,14 +3,19 @@ var CollisionComponentTypeEnum = { "circle": 0,
                                    "aabb": 1,
                                    "obb": 2,
                                    "lineseg": 3,
-                                   "group": 4
+                                   "group": 4,
+                                   "plane": 5,
+                                   "polygon": 6
                                  };
 
 
 //================================================================================
 //Plane
 //================================================================================
-function Plane() {
+function CollisionComponentPlane() {
+    GameObjectComponent.call(this);
+    this.type = CollisionComponentTypeEnum.plane;
+
     this.d = vec2.create();     // Direction of the plane
     this.n = vec2.create();     // Surface normal
 }
@@ -19,7 +24,7 @@ function Plane() {
 // Compute a plane (point and normal) from two points in 2D space
 // n is computed so that n = [0,1] if d = [1,0] (i.e. +90 deg rotation)
 // (where d = ptB - ptA)
-Plane.prototype.createFromPoints = function(ptA, ptB) {
+CollisionComponentPlane.prototype.createFromPoints = function(ptA, ptB) {
     // Compute d (direction)
     vec2.sub(this.d, ptB, ptA);
     vec2.normalize(this.d, this.d);
@@ -256,3 +261,19 @@ CollisionComponentGroup.prototype.getMaxPt = function() {
         return vec2.create();
     }
 };
+
+
+//================================================================================
+//Polygon
+//================================================================================
+
+function CollisionComponentPolygon() {
+    GameObjectComponent.call(this);
+    this.type = CollisionComponentTypeEnum.polygon;
+
+    this.points = [];   // Store points for sure (list of glMatrix.vec2 objects)
+                        // TODO decide whether to store planes also, or to compute them on the fly, for, e.g., separating axis testing
+}
+
+
+
