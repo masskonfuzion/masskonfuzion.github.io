@@ -36,7 +36,7 @@ function Spaceship() {
 
 
     this.fireAState = false;        // To be used in AI/logic or whatever, to tell the game that this spaceship is firing its guns
-    this.ableState = SpaceshipAbleStateEnum.enabled;
+    this.ableState = SpaceshipAbleStateEnum.disabled;
     this.spawnGracePd_s = 2;    // spawn grace period, in seconds
     this.spawnClock = 0;        // time remaining during spawning abaleState, before switching to fully enabled
 
@@ -203,8 +203,8 @@ Spaceship.prototype.update = function(dt_s, config = null) {
         }
     }
 
-    // If ship has spawned recently, count down until spawnClock reaches 0, then change ableState to enabled
-    // i.e., in spawning state, the ship is "partially enabled", except collisions are not processed (see game_logic.js)
+
+    // If in spawning state, the ship is "partially enabled", except collisions are not processed (see game_logic.js)
     if (this.ableState == SpaceshipAbleStateEnum.spawning) {
         this.spawnClock -= dt_s;
 

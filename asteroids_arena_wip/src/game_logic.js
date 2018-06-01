@@ -70,7 +70,7 @@ GameLogic.prototype.initialize = function() {
 
     var xplodPERef = this.components["xplodPE"];
     xplodPERef.registerParticleSystem(this.gameObjs["xplodPS"]);
-    xplodPERef.setVelocityRange(40.0, 60.0);
+    xplodPERef.setVelocityRange(10.0, 80.0);
     xplodPERef.setTTLRange(0.5, 1.0);         // seconds
     xplodPERef.setLaunchDir(1.0, 0.0);        // launch base dir is the vector [1,0]
     xplodPERef.setAngleRange(0.0, 359.0);     // rotate the base launch dir by some amount
@@ -653,6 +653,43 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         this.gameStats[shipName].deaths += 1;
         this.gameStats[shipName].score = Math.max(0, this.gameStats[shipName].score + this.settings["hidden"]["pointValues"]["death"]);
 
+    } else if (gameObjAType == "Spaceship" && gameObjBType == "Spaceship") {
+        // 2 spaceships crash into each other
+
+        var spaceshipARef = msg.colliderA.parentObj;
+        var spaceshipBRef = msg.colliderB.parentObj;
+
+        numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
+
+        var saveShipPos = vec2.clone(spaceshipARef.components["physics"].currPos);
+        cmdMsg = { "topic": "GameCommand",
+                   "command": "createExplosion",
+                   "targetObj": this,
+                   "params": { "numParticles": numParticles,
+                               "center": [ saveShipPos[0], saveShipPos[1] ]
+                             }
+                 };
+        this.messageQueue.enqueue(cmdMsg);
+
+        var saveShipPos = vec2.clone(spaceshipBRef.components["physics"].currPos);
+        cmdMsg = { "topic": "GameCommand",
+                   "command": "createExplosion",
+                   "targetObj": this,
+                   "params": { "numParticles": numParticles,
+                               "center": [ saveShipPos[0], saveShipPos[1] ]
+                             }
+                 };
+        this.messageQueue.enqueue(cmdMsg);
+
+
+        this.spawnAtNewLocation(spaceshipARef, 75);
+        this.spawnAtNewLocation(spaceshipBRef, 75);
+
+        var shipName = this.shipDict[spaceshipARef.objectID];    // NOTE: I hate that JS doesn't care that spaceshipObjectID is a string, but the keys in the dict/obj are int/float
+        this.gameStats[shipName].deaths += 1;   // TODO - now that there's a ship list, we need to map the ship ref to the player (either cpu or human)
+
+        shipName = this.shipDict[spaceshipBRef.objectID];
+        this.gameStats[shipName].deaths += 1;
     }
 
     // Note that for asteroids and the spaceship, we're doing AABB-vs-line segment tests against the arena (to determine containment)
@@ -673,6 +710,7 @@ GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
     var spawnPosIsValid = false;
 
     while (!spawnPosIsValid) {
+        // TODO rework this loop so we only generate positions; then, once we have a valid position, do all of the various assignments
 
         var spawnPos = vec2.create();
         vec2.set(spawnPos, Math.floor(Math.random() * 700) + 50, Math.floor(Math.random() * 300) + 50);   // TODO don't hardcode these values. Instead, maybe take in min/max x/y, based on arena dimensions
@@ -682,7 +720,6 @@ GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
             continue;
         }
 
-        // Set the position of the query object (e.g. a Spaceship)
         var physComp = queryObj.components["physics"];
         physComp.setPosition(spawnPos[0], spawnPos[1]);
         physComp.setAcceleration(0, 0);
