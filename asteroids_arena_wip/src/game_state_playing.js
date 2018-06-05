@@ -41,6 +41,8 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
     for (var shipName in this.gameLogic.gameStats) {
         textPosY = 0.066667 + i * 0.05;
 
+        shipNamePosNDC = [0.20, textPosY];
+
         deathsLabelPosNDC = [0.32, textPosY];      // NDCs go from 0 to 1 on each axis
         deathsPosNDC = [0.40, textPosY];      // NDCs go from 0 to 1 on each axis
 
@@ -53,6 +55,8 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
         canvasContext.font = "18px GameFont";  // Testing
         canvasContext.fillStyle = jankyListOfScoreColors[i];  // TODO Eventually:  change color to match player ship color (or, store it with a spaceship profile of some sort, which is enabled when the player selects a ship)
         // TODO wrap NDC calculation in function
+        canvasContext.fillText(shipName, shipNamePosNDC[0] * canvasContext.canvas.width, shipNamePosNDC[1] * canvasContext.canvas.height);
+
         canvasContext.fillText("Deaths", deathsLabelPosNDC[0] * canvasContext.canvas.width, deathsLabelPosNDC[1] * canvasContext.canvas.height);
         canvasContext.fillText(this.gameLogic.gameStats[shipName].deaths, deathsPosNDC[0] * canvasContext.canvas.width, deathsPosNDC[1] * canvasContext.canvas.height);
 
