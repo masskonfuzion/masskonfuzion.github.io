@@ -11,7 +11,7 @@ GameStateManager.prototype.addState = function(stateName, stateObj) {
 // TODO add touch event handlers to the [change/pause/resume]State functions (maybe encapsulate the add/remove calls into functions)
 // TODO make sure that when we change state, we do it as the very last thing that happens in the game loop (i.e. after all updates/renders, before next update
 // Change from current state to toState
-GameStateManager.prototype.changeState = function(toState) {
+GameStateManager.prototype.changeState = function(toState, transferObj = null) {
     // TODO encapsulate the mgmt further into helper functions. e.g., changeState and resumeState have the same "current state deactivation" code
     var fromState = this.popState();
     if (fromState) {
@@ -19,21 +19,21 @@ GameStateManager.prototype.changeState = function(toState) {
     }
 
     this.pushState(toState);
-    this.currState().initialize();
+    this.currState().initialize(transferObj);
 };
 
 // Push a new state onto the stack, without popping the current one
 // Scenarios where it's desirable to have multiple states in the stack:
 // - pause menu overlay over paused game
 // - in-game inventory menu
-GameStateManager.prototype.pauseState = function(toState) {
+GameStateManager.prototype.pauseState = function(toState, transferObj = null) {
 
     // Now, push the passed-in state, initialize it, activate its handlers
     this.pushState(toState);
-    this.currState().initialize();
+    this.currState().initialize(transferObj);
 };
 
-GameStateManager.prototype.resumeState = function(toState) {
+GameStateManager.prototype.resumeState = function() {
     // Destroy the existing state
     var fromState = this.popState();
     if (fromState) {

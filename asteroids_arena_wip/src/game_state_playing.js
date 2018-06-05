@@ -5,7 +5,7 @@ function GameStatePlaying() {
 GameStatePlaying.prototype = Object.create(GameStateBase.prototype);
 GameStatePlaying.prototype.constructor = GameStatePlaying;
 
-GameStatePlaying.prototype.initialize = function() {
+GameStatePlaying.prototype.initialize = function(transferObj = null) {
     this.gameLogic.initialize();
 };
 

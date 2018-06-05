@@ -49,6 +49,12 @@ GameLogic.prototype.initialize = function() {
                                                "kill": 200,
                                                "death": -100
                                              };
+    //TODO un-hardcode game mode -- make it selectable/configurable. Use menus yeeaaahhh boyyyy
+    this.settings["visible"]["gameMode"] = { "matchType": "deathmatch",
+                                             "shipKills": 15,
+                                             "gunsEnabled": "yes"
+                                           }
+    // ^^ Figure out what the right settings should be. e.g., gunsEnabled is there because I have a thought to make a kamikaze mode, where you can only attack by ramming into targets :-D :-D
 
     // Begin initializing game subsystems. Note that the order of operations is important
 
@@ -381,10 +387,24 @@ GameLogic.prototype.update = function(dt_s, config = null) {
         this.collisionMgr.update(dt_s);
     }
 
-    // Play sound effects
+    // Play sound effects? (TODO: the sound effects handler/manager should have its own little per-frame queue of sound effects to play. (Make it a set -- only 1 sound effect per cycle. If the event queue has 2 events to play the same sound effect, play only 1)
 
-    // Process AI (if any/still TODO)
-    // NOTE that user input is handled via event handler in the web browser
+    // TODO wrap this end-of-game detection into a function. Handle various game modes
+    for (var shipName in this.gameStats) {
+        var scoreObj = this.gameStats[shipName];
+
+        if (scoreObj.kills == this.settings.visible.gameMode.shipKills) {
+            console.log(shipName + " wins!!");
+
+            cmdMsg = { "topic": "UICommand",
+                       "targetObj": this,
+                       "command": "changeState",
+                       "params": {"stateName": "GameOver",
+                                  "transferObj": {"displayMsg": shipName + " wins!!"} }
+                     };
+            this.messageQueue.enqueue(cmdMsg);
+        }
+    }
 };
 
 GameLogic.prototype.sendCmdToGameObj = function(msg) {
@@ -814,7 +834,9 @@ GameLogic.prototype.doUICommand = function(msg) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName]);
+            // TODO note how we're using the transferObj here. It should be like this everywhere we call changeState or pauseState or whatever
+            var transferObj = msg.params.hasOwnProperty("transferObj") ? msg.params.transferObj : null;   // Use msg.params if it exists; else pass null
+            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
             break;
     }
 

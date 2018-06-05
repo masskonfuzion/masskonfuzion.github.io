@@ -38,6 +38,7 @@
 <script src="src/game_state_credits.js" type="text/javascript"></script>
 <script src="src/game_state_how_to_play.js" type="text/javascript"></script>
 <script src="src/game_state_settings.js" type="text/javascript"></script>
+<script src="src/game_state_stats_overlay.js" type="text/javascript"></script>
 <script src="src/game_logic.js" type="text/javascript"></script>
 <script src="src/finite_state_machine.js" type="text/javascript"></script>
 <script src="src/physics_component.js" type="text/javascript"></script>
@@ -63,6 +64,7 @@ var gameStateMainMenu = new GameStateMainMenu();
 var gameStateCredits = new GameStateCredits();
 var gameStateHowToPlay = new GameStateHowToPlay();
 var gameStateSettings = new GameStateSettings();
+var gameStateGameOver = new GameStateStatsOverlay();    // TODO probably change the "StatsOverlay" part of this name to GameOver
 
 var gameStateMgr = new GameStateManager();  // TODO make game states belong to the manager?
 gameStateMgr.addState("Playing", gameStatePlaying);     // TODO consider constructing game states in the GameStateManager scope? States are currently global vars, but could just easily be local to the manager
@@ -70,6 +72,7 @@ gameStateMgr.addState("MainMenu", gameStateMainMenu);
 gameStateMgr.addState("Credits", gameStateCredits);
 gameStateMgr.addState("HowToPlay", gameStateHowToPlay);
 gameStateMgr.addState("Settings", gameStateSettings);
+gameStateMgr.addState("GameOver", gameStateGameOver);
 
 
 // Trap keyboard events and forward them to game logic
@@ -141,7 +144,11 @@ function mainloop(timestamp)
 
     var currState = gameStateMgr.currState();
 	while (game.timer.elapsed >= game.fixed_dt_s) {
-        currState.preRender(game.context, game.fixed_dt_s);
+        // The current state is the last state (i.e. if the state manager's array is 2 items, then currState() is array[1])
+        for (var gameState of gameStateMgr.states) {
+            gameState.preRender(game.context, game.fixed_dt_s);
+            //currState.preRender(game.context, game.fixed_dt_s);   // TODO delete this line
+        }
 
 		game.timer.elapsed -= game.fixed_dt_s;
 	}
