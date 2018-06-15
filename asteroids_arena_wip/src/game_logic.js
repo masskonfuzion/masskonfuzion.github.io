@@ -11,12 +11,15 @@ function GameLogic() {
     GameObject.call(this);
 
 // TODO: Probably make the GameLogic class implement some interface that has the necessary functions that all GameLogic objects must have
+
+    // TODO add game modes.  Maybe death match (the current default) and timer attack (most kills, or highest score)
     this.collisionMgr = null;   // Placeholder for a collision manager (definition probably belongs in base/interface class)
     this.gameObjs = {};
     this.shipDict = {};     // A mapping of ship GameObject objectIDs (assigned by game engine) to the "nicknames" (assigned by the programmer)
 	this.keyCtrlMap = {};   // keyboard key state handling (keeping it simple)
     this.messageQueue = null;
     this.objectIDToAssign = -1;  // probably belongs in the base class.
+    // NOTE: this.settings (i.e. gameLogic.settings) is DIFFERENT than the settings object stored in localStorage. localStorage has user-configurable settings. gameLogic has settings for the game itself (shouldn't be modified by the player/user
     this.settings = { "hidden": {}, "visible": {} };    // hidden settings are, e.g. point values for accomplishing certain goals; visible settings are, e.g. game config options
     this.gameStats = {};    // store things, e.g. player's score, in-game achievements, state variables, etc.
 
@@ -49,13 +52,6 @@ GameLogic.prototype.initialize = function() {
                                                "kill": 200,
                                                "death": -100
                                              };
-    //TODO un-hardcode game mode -- make it selectable/configurable. Use menus yeeaaahhh boyyyy
-    this.settings["visible"]["gameMode"] = { "matchType": "deathmatch",
-                                             "shipKills": 15,
-                                             "gunsEnabled": "yes"
-                                           }
-    // ^^ Figure out what the right settings should be. e.g., gunsEnabled is there because I have a thought to make a kamikaze mode, where you can only attack by ramming into targets :-D :-D
-
     // Begin initializing game subsystems. Note that the order of operations is important
 
     // ----- Initialize collision manager
@@ -393,9 +389,14 @@ GameLogic.prototype.update = function(dt_s, config = null) {
     for (var shipName in this.gameStats) {
         var scoreObj = this.gameStats[shipName];
 
-        if (scoreObj.kills == this.settings.visible.gameMode.shipKills) {
+        //TODO un-hardcode game mode -- make it selectable/configurable.
+        // ^^ Figure out what the right settings should be. e.g., gunsEnabled is there because I have a thought to make a kamikaze mode, where you can only attack by ramming into targets :-D :-D
+        // ^^ Then, here, check if gameMode == deathMatch, then the game ends when a player gets the right # of kills; else if gameMode == timeAttack, game ends when time's up, etc.
+
+        if (scoreObj.kills == game.settings.visible.gameMode.deathMatch.shipKills) {
             console.log(shipName + " wins!!");
 
+            // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
             cmdMsg = { "topic": "UICommand",
                        "targetObj": this,
                        "command": "changeState",

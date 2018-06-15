@@ -1,10 +1,10 @@
 // Game state for showing stats overlay, e.g. at end of game
 function GameStateStatsOverlay() {
     GameStateBase.call(this);
-
     this.uiItems = [];
-
     this.messageQueue = null;
+    this.activeItemIndex = 0;
+    this.activeItem = null;
 }
 
 GameStateStatsOverlay.prototype = Object.create(GameStateBase.prototype);
@@ -25,6 +25,7 @@ GameStateStatsOverlay.prototype.initialize = function(transferObj = null) {
 
 
 GameStateStatsOverlay.prototype.cleanup = function() {
+    this.uiItems = [];
 };
 
 

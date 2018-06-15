@@ -1,16 +1,18 @@
 function GameStatePlaying() {
-    this.gameLogic = new GameLogic();
+    this.gameLogic = null;
 }
 
 GameStatePlaying.prototype = Object.create(GameStateBase.prototype);
 GameStatePlaying.prototype.constructor = GameStatePlaying;
 
 GameStatePlaying.prototype.initialize = function(transferObj = null) {
+    this.gameLogic = new GameLogic();
     this.gameLogic.initialize();
 };
 
 GameStatePlaying.prototype.cleanup = function() {
     // implement cleanup (maybe empty out some arrays? Of course, JS is garbage-collected, so... maybe do nothing :-D)
+    // NOTE: we're not removing/reassigning-to-null this.gameLogic because we need it in states that follow (e.g. GameOver)
 };
 
 // Do things before rendering the scene (e.g.:

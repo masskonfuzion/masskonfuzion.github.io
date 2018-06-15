@@ -14,9 +14,7 @@ MessageQueue.prototype.registerListener = function(topic, handlerObj, handlerFun
     // Because of scoping issues and funky behavior with the "this" keyword,
     // this registration function takes in the "this" reference of the object
     // that owns the handler function
-    //console.log("Entering registerListener. \"this\" = ");
-    //console.log(this);
-    // TODO make sure we're registering a reference to the listener object, rather than a copy of it
+    //console.log("Entering registerListener. \"this\" = ", this);
     listenerID = this._registeredListeners.length;  // e.g., When empty, id == 0
 
     if ( !(topic in this._registeredListeners) ) {

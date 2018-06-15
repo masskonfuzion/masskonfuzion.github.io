@@ -1,15 +1,9 @@
 function GameStateCredits() {
     GameStateBase.call(this);
     this.uiItems = [];
-
-    // TODO maybe keep a 2nd list of "selectable UI items". Then, change the uiItems.push call into a call that encapsulates adding the item to the displayable UI items list, vs the selectable UI items list. (i.e., some items are meant to be displayed only)
-    this.uiItems.push( new uiItemText("Mass KonFuzion did everything...", "32px", "MenuFont", "white", 0.5, 0.72, "center", "middle") );  // Currently, stateName is the name of the state obj (var) in the global scope
-    this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
-
     this.activeItemIndex = 0;
-    this.activeItem = this.uiItems[this.activeItemIndex];
-
     this.messageQueue = null;
+    this.activeItem = null;
 
 }
 
@@ -21,11 +15,16 @@ GameStateCredits.prototype.initialize = function(transferObj = null) {
     this.messageQueue.initialize(2);
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
 
+    // TODO maybe keep a 2nd list of "selectable UI items". Then, change the uiItems.push call into a call that encapsulates adding the item to the displayable UI items list, vs the selectable UI items list. (i.e., some items are meant to be displayed only)
+    this.uiItems.push( new uiItemText("Mass KonFuzion did everything...", "32px", "MenuFont", "white", 0.5, 0.72, "center", "middle") );  // Currently, stateName is the name of the state obj (var) in the global scope
+    this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
+
     this.activeItemIndex = this.uiItems.length - 1;   // Select the last item (i.e., the "Return" item -- do this because the credits item is selectable. It shouldn't be, but I'm being lazy... :-D)
     this.activeItem = this.uiItems[this.activeItemIndex];
 };
 
 GameStateCredits.prototype.cleanup = function() {
+    this.uiItems = [];
 };
 
 GameStateCredits.prototype.render = function(canvasContext, dt_s) {
