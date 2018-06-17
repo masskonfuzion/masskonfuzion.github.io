@@ -35,6 +35,7 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
 
 
     this.uiItems.push( new uiItemText("Difficulty", "24px", "MenuFont", "white", 0.55, 0.1, "left", "middle") );
+    this.uiItems.push( new uiItemText("( TODO )", "24px", "MenuFont", "white", 0.75, 0.1, "left", "middle") );
     this.uiItems.push( new uiItemText("DeathMatch Options", "32px", "MenuFont", "white", 0.05, 0.2, "left", "middle") );
 
     this.uiItems.push( new uiItemText("Kills Count", "24px", "MenuFont", "white", 0.05, 0.25, "left", "middle") );
@@ -62,8 +63,13 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
 
     this.uiItems.push( new uiItemText("Controls", "32px", "MenuFont", "white", 0.55, 0.2, "left", "middle") );
     this.uiItems.push( new uiItemText("Thrust", "24px", "MenuFont", "white", 0.55, 0.25, "left", "middle") );
+    this.uiItems.push( new uiItemText("W", "24px", "MenuFont", "white", 0.75, 0.25, "left", "middle") );
     this.uiItems.push( new uiItemText("Turn Left", "24px", "MenuFont", "white", 0.55, 0.3, "left", "middle") );
+    this.uiItems.push( new uiItemText("A", "24px", "MenuFont", "white", 0.75, 0.3, "left", "middle") );
     this.uiItems.push( new uiItemText("Turn Right", "24px", "MenuFont", "white", 0.55, 0.35, "left", "middle") );
+    this.uiItems.push( new uiItemText("D", "24px", "MenuFont", "white", 0.75, 0.35, "left", "middle") );
+    this.uiItems.push( new uiItemText("Fire", "24px", "MenuFont", "white", 0.55, 0.4, "left", "middle") );
+    this.uiItems.push( new uiItemText("L Shift", "24px", "MenuFont", "white", 0.75, 0.4, "left", "middle") );
 
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 
