@@ -12,7 +12,6 @@ function GameLogic() {
 
 // TODO: Probably make the GameLogic class implement some interface that has the necessary functions that all GameLogic objects must have
 
-    // TODO add game modes.  Maybe death match (the current default) and timer attack (most kills, or highest score)
     this.collisionMgr = null;   // Placeholder for a collision manager (definition probably belongs in base/interface class)
     this.gameObjs = {};
     this.shipDict = {};     // A mapping of ship GameObject objectIDs (assigned by game engine) to the "nicknames" (assigned by the programmer)
@@ -52,6 +51,12 @@ GameLogic.prototype.initialize = function() {
                                                "kill": 200,
                                                "death": -100
                                              };
+    this.timeAttackSecondsLeft = 0;
+    if (game.settings.visible.gameMode == "Time Attack") {
+        var minsec = game.settings.visible.gameModeSettings.timeAttack.timeLimit.split(":");
+        this.timeAttackSecondsLeft = parseInt(minsec[0]) * 60 + parseInt(minsec[1]);    // Use parseInt() to explicitly convert str to int. JS does this automatically/implicitly, but I prefer the explicit conversion
+    }
+
     // Begin initializing game subsystems. Note that the order of operations is important
 
     // ----- Initialize collision manager
@@ -386,25 +391,60 @@ GameLogic.prototype.update = function(dt_s, config = null) {
     // Play sound effects? (TODO: the sound effects handler/manager should have its own little per-frame queue of sound effects to play. (Make it a set -- only 1 sound effect per cycle. If the event queue has 2 events to play the same sound effect, play only 1)
 
     // TODO wrap this end-of-game detection into a function. Handle various game modes
-    for (var shipName in this.gameStats) {
-        var scoreObj = this.gameStats[shipName];
+    switch (game.settings.visible.gameMode) {
+        case "Death Match":
+            for (var shipName in this.gameStats) {
+                var scoreObj = this.gameStats[shipName];
 
-        //TODO un-hardcode game mode -- make it selectable/configurable.
-        // ^^ Figure out what the right settings should be. e.g., gunsEnabled is there because I have a thought to make a kamikaze mode, where you can only attack by ramming into targets :-D :-D
-        // ^^ Then, here, check if gameMode == deathMatch, then the game ends when a player gets the right # of kills; else if gameMode == timeAttack, game ends when time's up, etc.
+                //TODO un-hardcode game mode -- make it selectable/configurable.
+                // ^^ Figure out what the right settings should be. e.g., gunsEnabled is there because I have a thought to make a kamikaze mode, where you can only attack by ramming into targets :-D :-D
+                // ^^ Then, here, check if gameMode == deathMatch, then the game ends when a player gets the right # of kills; else if gameMode == timeAttack, game ends when time's up, etc.
 
-        if (scoreObj.kills == game.settings.visible.gameMode.deathMatch.shipKills) {
-            console.log(shipName + " wins!!");
+                if (scoreObj.kills == game.settings.visible.gameModeSettings.deathMatch.shipKills) {
+                    console.log(shipName + " wins!!");
 
-            // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
-            cmdMsg = { "topic": "UICommand",
-                       "targetObj": this,
-                       "command": "changeState",
-                       "params": {"stateName": "GameOver",
-                                  "transferObj": {"displayMsg": shipName + " wins!!"} }
-                     };
-            this.messageQueue.enqueue(cmdMsg);
-        }
+                    // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
+                    cmdMsg = { "topic": "UICommand",
+                               "targetObj": this,
+                               "command": "changeState",
+                               "params": {"stateName": "GameOver",
+                                          "transferObj": {"displayMsg": shipName + " wins!!"} }
+                             };
+                    this.messageQueue.enqueue(cmdMsg);
+                }
+            }
+        break;
+
+        case "Time Attack":
+            this.timeAttackSecondsLeft -= dt_s;
+
+            if (this.timeAttackSecondsLeft <= 0.0) {
+
+                var winner = { "shipName": "",
+                               "kills": 0
+                             };
+
+                for (var shipName in this.gameStats) {
+                    var scoreObj = this.gameStats[shipName];
+
+                    if (scoreObj.kills > winner.kills ) {
+                        winner.shipName = shipName;
+                        winner.kills = scoreObj.kills;
+                    }
+                }
+                console.log(winner.shipName + " wins with " + winner.kills.toString() + " kills in " + game.settings.visible.gameModeSettings.timeAttack.timeLimit + "!!");
+
+                // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
+                // e.g. Most kills, best score, most deaths
+                cmdMsg = { "topic": "UICommand",
+                           "targetObj": this,
+                           "command": "changeState",
+                           "params": {"stateName": "GameOver",
+                                      "transferObj": {"displayMsg": winner.shipName  + " wins with " + winner.kills.toString() + " kills in " + game.settings.visible.gameModeSettings.timeAttack.timeLimit + "!!"} }
+                         };
+                this.messageQueue.enqueue(cmdMsg);
+            }
+        break;
     }
 };
 

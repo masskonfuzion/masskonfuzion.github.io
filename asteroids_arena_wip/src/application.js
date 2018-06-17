@@ -39,10 +39,12 @@ GameApplication.prototype.initialize = function() {
     {
         this.settings = { "hidden": {}, "visible": {} };    // hidden settings are, e.g. point values for accomplishing certain goals; visible settings are, e.g. game config options
         //TODO un-hardcode game mode -- make it selectable/configurable. Use menus yeeaaahhh boyyyy. 
-        this.settings["visible"]["gameMode"] = { "deathMatch" : { "shipKills": 15,
-                                                                  "gunsEnabled": "yes"
-                                                                }
-                                               }
+        this.settings["visible"]["gameMode"] = "Death Match";
+        this.settings["visible"]["gameModeSettings"] = { "deathMatch": { "shipKills": 15,
+                                                                         "gunsEnabled": "yes"
+                                                                       },
+                                                         "timeAttack": { "timeLimit": "2:00" } 
+                                                       }
     }
     // Save settings to localStorage. We have to JSON.stringify() the object, because localStorage wants key/value pairs of strings (even numbers get saved as strings)
     // TODO maybe make functions in the game/application object, for saving/loading localSettings 

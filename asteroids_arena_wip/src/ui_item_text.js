@@ -3,7 +3,7 @@ function uiItemText(text, size, fontFamily, color, ndcX, ndcY, align, baseline, 
     this.size = size;               // Can be whatever CSS will accept  - must be defined somewhere in the scope of the game
     this.font = fontFamily;         // this should be the str as called by the canvasContext, e.g. "18px FontName"
     this.align = align == null ? "left" : align;    // can be "left", "center", or "right"
-    this.baseline = baseline == null ? "top" : baseline;    // can be "left", "center", or "right"
+    this.baseline = baseline == null ? "top" : baseline;    // specifies the baseline (vertical align)
     this.color = color;             // can be words (e.g. "white") or rgb codes (e.g. "#ffffff")
     this.posNDC = [ndcX, ndcY];
     this.text = text;

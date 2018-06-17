@@ -41,7 +41,7 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
 
     var i = 0;
     for (var shipName in this.gameLogic.gameStats) {
-        textPosY = 0.066667 + i * 0.05;
+        textPosY = 0.066667 + i * 0.05;     // These are "magic numbers" -- tweaked manually, based on what looked good
 
         shipNamePosNDC = [0.20, textPosY];
 
@@ -68,6 +68,23 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
         canvasContext.fillText("Score", scoreLabelPosNDC[0] * canvasContext.canvas.width, scoreLabelPosNDC[1] * canvasContext.canvas.height);
         canvasContext.fillText(this.gameLogic.gameStats[shipName].score, scorePosNDC[0] * canvasContext.canvas.width, scorePosNDC[1] * canvasContext.canvas.height);
         i += 1;
+    }
+    
+    if (game.settings.visible.gameMode == "Time Attack") {
+        timeLabelPosNDC = [0.75, 0.3];      // NDCs go from 0 to 1 on each axis
+        timePosNDC = [0.85, 0.3];      // NDCs go from 0 to 1 on each axis
+
+        // integer values of min/sec
+        var iMin = Math.floor(this.gameLogic.timeAttackSecondsLeft / 60);
+        var iSec = Math.floor(this.gameLogic.timeAttackSecondsLeft % 60);
+
+        // string values of min/sec
+        var sMin = iMin.toString();
+        var sSec = iSec < 10 ? iSec.toString().padStart(2, "0") : iSec.toString();    // Use padStart() to 0-pad seconds
+        var gameTimeLeft = sMin + ":" + sSec
+
+        canvasContext.fillText("Time", timeLabelPosNDC[0] * canvasContext.canvas.width, timeLabelPosNDC[1] * canvasContext.canvas.height);
+        canvasContext.fillText(gameTimeLeft, timePosNDC[0] * canvasContext.canvas.width, timePosNDC[1] * canvasContext.canvas.height);
     }
 
     canvasContext.restore();   // Restore the transformation

@@ -140,7 +140,7 @@ function stop()
 
 function mainloop(timestamp)
 {
-    // NOTE requestAnimationFrame passes in a timestamp into the function being called
+    // NOTE requestAnimationFrame passes in a timestamp into the function being called, which is this, mainloop()
     game.timer.doFrameTimer(timestamp);
 
     var currState = gameStateMgr.currState();

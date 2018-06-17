@@ -21,28 +21,49 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
 
     // TODO Implement other UI items (i.e., pictures)
-    this.uiItems.push( new uiItemText("General", "32px", "MenuFont", "white", 0.05, 0.05, "left", "left") );
-    this.uiItems.push( new uiItemText("Difficulty", "24px", "MenuFont", "white", 0.05, 0.1, "left", "left") );
-    this.uiItems.push( new uiItemText("DeathMatch Options", "32px", "MenuFont", "white", 0.05, 0.2, "left", "left") );
+    this.uiItems.push( new uiItemText("General", "32px", "MenuFont", "white", 0.05, 0.05, "left", "middle") );
 
-    this.uiItems.push( new uiItemText("Kills Count", "24px", "MenuFont", "white", 0.05, 0.25, "left", "left") );
+    // TODO move game mode setting into a "Mode Select" screen that is presented when the user selects to Play Game
+    this.uiItems.push( new uiItemText("Game Mode", "24px", "MenuFont", "white", 0.05, 0.1, "left", "middle") );
 
-    var uiItemKillsCountSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.25, "left", "left");
+    var uiItemGameModeSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.1, "left", "middle");
+    uiItemGameModeSetting.setSelectableValues( ["Death Match", "Time Attack" ] );
+    uiItemGameModeSetting.setBoundObj(game.settings.visible);
+    uiItemGameModeSetting.setBoundKey("gameMode");
+    uiItemGameModeSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
+    this.uiItems.push( uiItemGameModeSetting );
+
+
+    this.uiItems.push( new uiItemText("Difficulty", "24px", "MenuFont", "white", 0.55, 0.1, "left", "middle") );
+    this.uiItems.push( new uiItemText("DeathMatch Options", "32px", "MenuFont", "white", 0.05, 0.2, "left", "middle") );
+
+    this.uiItems.push( new uiItemText("Kills Count", "24px", "MenuFont", "white", 0.05, 0.25, "left", "middle") );
+
+    var uiItemKillsCountSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.25, "left", "middle");
     uiItemKillsCountSetting.setSelectableValues( [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50] );
     // ^^ because I didn't feel like writing a function to initialize the selectable values by using a range (like start=5, end=50, step=1)
     // selectable values must be set before synchronizing bound value to selectable values list
-    uiItemKillsCountSetting.setBoundObj(game.settings.visible.gameMode.deathMatch);
+    // This list could also come from "invisible" settings... but then again... maybe not; because end users could hack that
+    uiItemKillsCountSetting.setBoundObj(game.settings.visible.gameModeSettings.deathMatch);
     uiItemKillsCountSetting.setBoundKey("shipKills");
     uiItemKillsCountSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
     this.uiItems.push( uiItemKillsCountSetting );
 
-    this.uiItems.push( new uiItemText("Timer Attack Options", "32px", "MenuFont", "white", 0.05, 0.35, "left", "left") );    // TODO 2018-06-06 Will we have a timer attack mode?
-    this.uiItems.push( new uiItemText("Time Limit", "24px", "MenuFont", "white", 0.05, 0.40, "left", "left") );
+    this.uiItems.push( new uiItemText("Timer Attack Options", "32px", "MenuFont", "white", 0.05, 0.35, "left", "middle") );
+    this.uiItems.push( new uiItemText("Time Limit", "24px", "MenuFont", "white", 0.05, 0.40, "left", "middle") );
+    
+    var uiItemTimeLimitSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.40, "left", "middle");
+    uiItemTimeLimitSetting.setSelectableValues( [ "1:00", "2:00", "3:00", "4:00", "5:00", "6:00", "7:00", "8:00", "9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00", "24:00", "25:00", "26:00", "27:00", "28:00", "29:00", "30:00" ] );
+    uiItemTimeLimitSetting.setBoundObj(game.settings.visible.gameModeSettings.timeAttack);
+    uiItemTimeLimitSetting.setBoundKey("timeLimit");
+    uiItemTimeLimitSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
+    this.uiItems.push( uiItemTimeLimitSetting );
 
-    this.uiItems.push( new uiItemText("Controls", "32px", "MenuFont", "white", 0.55, 0.05, "left", "left") );
-    this.uiItems.push( new uiItemText("Thrust", "24px", "MenuFont", "white", 0.55, 0.1, "left", "left") );
-    this.uiItems.push( new uiItemText("Turn Left", "24px", "MenuFont", "white", 0.55, 0.15, "left", "left") );
-    this.uiItems.push( new uiItemText("Turn Right", "24px", "MenuFont", "white", 0.55, 0.2, "left", "left") );
+
+    this.uiItems.push( new uiItemText("Controls", "32px", "MenuFont", "white", 0.55, 0.2, "left", "middle") );
+    this.uiItems.push( new uiItemText("Thrust", "24px", "MenuFont", "white", 0.55, 0.25, "left", "middle") );
+    this.uiItems.push( new uiItemText("Turn Left", "24px", "MenuFont", "white", 0.55, 0.3, "left", "middle") );
+    this.uiItems.push( new uiItemText("Turn Right", "24px", "MenuFont", "white", 0.55, 0.35, "left", "middle") );
 
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 
@@ -80,11 +101,17 @@ GameStateSettings.prototype.render = function(canvasContext, dt_s) {
     var hlItem = this.uiItems[this.highlightedItemIndex];
     var hlWidth = Math.ceil( hlItem.getWidth(canvasContext) * 1.5 );
     var hlHeight = Math.ceil( hlItem.getHeight(canvasContext) * 1.5);
-    var hlX = Math.floor(MathUtils.lerp(hlItem.posNDC[0], 0, canvasContext.canvas.width) - hlWidth/2);
-    var hlY = Math.floor(MathUtils.lerp(hlItem.posNDC[1], 0, canvasContext.canvas.height) - hlHeight/2);
+
+    var hlXOffset = (hlItem.hasOwnProperty("align") && hlItem.align == "center") ? -hlWidth / 2 : 0;
+    //var hlYOffset = (hlItem.hasOwnProperty("baseline") && hlItem.align == "middle") ? -hlHeight / 2 : 0; // TODO delete, or update to handle top/middle/bottom
+    var hlYOffset = -hlHeight / 2;  // Note: this highlight assumes that textBaseline (vertical align) is "middle"
+
+    var hlX = Math.floor(MathUtils.lerp(hlItem.posNDC[0], 0, canvasContext.canvas.width) + hlXOffset);
+    var hlY = Math.floor(MathUtils.lerp(hlItem.posNDC[1], 0, canvasContext.canvas.height) + hlYOffset);
 
     canvasContext.lineWidth = 3;
-    canvasContext.strokeStyle = "yellow";
+    
+    canvasContext.strokeStyle = this.activeItem == null ? "yellow" : "red";
     canvasContext.strokeRect(hlX, hlY, hlWidth, hlHeight);
 
     canvasContext.restore();

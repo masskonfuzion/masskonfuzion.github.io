@@ -2,7 +2,7 @@ function uiItemSpinner(text, size, fontFamily, color, ndcX, ndcY, align, baselin
     this.size = size;               // Can be whatever CSS will accept  - must be defined somewhere in the scope of the game
     this.font = fontFamily;         // this should be the str as called by the canvasContext, e.g. "18px FontName"
     this.align = align == null ? "left" : align;    // can be "left", "center", or "right"
-    this.baseline = baseline == null ? "top" : baseline;    // can be "left", "center", or "right"
+    this.baseline = baseline == null ? "top" : baseline;    // specifies the baseline (vertical align)
     this.color = color;             // can be words (e.g. "white") or rgb codes (e.g. "#ffffff")
     this.posNDC = [ndcX, ndcY];
     // TODO remove this.text -- there is no "this.text" in a spinner; it's either "" or a bound value
@@ -33,7 +33,8 @@ uiItemSpinner.prototype.draw = function(canvasContext) {
 uiItemSpinner.prototype.getWidth = function(canvasContext) {
     // set the canvas font, so we can measure text
     canvasContext.font = this.size + " " + this.font;
-    return canvasContext.measureText(this.text).width;
+    //return canvasContext.measureText(this.text).width;
+    return canvasContext.measureText(this.boundObj[this.boundKey].toString()).width;
 };
 
 // Get height of text UI item
