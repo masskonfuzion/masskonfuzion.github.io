@@ -3,7 +3,7 @@ function Asteroid () {
 
     this.addComponent("physics", new PhysicsComponentVerlet());
     this.addComponent("render", new RenderComponentSprite());       // Each asteroid can be a particular size (e.g. small, medium, or large). The AsteroidManager will control all asteroids
-    this.addComponent("collision", new CollisionComponentAABB());
+    this.addComponent("collision", new CollisionComponentPolygon());
 
     this.hitPoints = 1;
     this.size = 2;  // Sizes are: 2=large, 1=medium, 0=small

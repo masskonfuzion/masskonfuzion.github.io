@@ -4,17 +4,14 @@ function GameScoresAndStats() {
     this.kills = 0;
 }
 
-var jankyListOfScoreColors = ["orangered", "cyan", "darkgray"];
-
 function GameLogic() {
     
     GameObject.call(this);
 
-// TODO: Probably make the GameLogic class implement some interface that has the necessary functions that all GameLogic objects must have
-
     this.collisionMgr = null;   // Placeholder for a collision manager (definition probably belongs in base/interface class)
     this.gameObjs = {};
     this.shipDict = {};     // A mapping of ship GameObject objectIDs (assigned by game engine) to the "nicknames" (assigned by the programmer)
+    this.characters = {};   // A mapping of GameObject objectIDs to "character" objects
 	this.keyCtrlMap = {};   // keyboard key state handling (keeping it simple)
     this.messageQueue = null;
     this.objectIDToAssign = -1;  // probably belongs in the base class.
@@ -25,15 +22,20 @@ function GameLogic() {
     this.addComponent("xplodPE", new ParticleEmitter());
 
     this.commandMap["createExplosion"] = this.createExplosion;
+    this.bulletSoundPool = null;
+
+    this.bgm_track_list = [];
+    this.bgm = null;
 }
 
 GameLogic.prototype = Object.create(GameObject.prototype);
 GameLogic.prototype.constructor = GameLogic;
 
 
-GameLogic.prototype.initialize = function() {
+GameLogic.prototype.initialize = function(configObj = null) {
     // Key control map is keyed on keypress event "code", e.g. "KeyW" (as opposed to "keyCode", which is a number, like 87)
     // Based on documentation on the Mozilla Developer Network (MDN), "code" is preferred, and "keyCode" is deprecated
+    // TODO change from using "code" to using "key" (see Mozilla Developers' Network documentation on KeyboardEvents)
     this.keyCtrlMap["thrust"] = { "code": "KeyW", "state": false };
     this.keyCtrlMap["turnLeft"] = { "code": "KeyA", "state": false };
     this.keyCtrlMap["turnRight"] = { "code": "KeyD", "state": false };
@@ -56,6 +58,15 @@ GameLogic.prototype.initialize = function() {
         var minsec = game.settings.visible.gameModeSettings.timeAttack.timeLimit.split(":");
         this.timeAttackSecondsLeft = parseInt(minsec[0]) * 60 + parseInt(minsec[1]);    // Use parseInt() to explicitly convert str to int. JS does this automatically/implicitly, but I prefer the explicit conversion
     }
+
+    this.bulletSoundPool = new SoundPool("assets/sounds/laser01.mp3", null, 5);   // TODO make resource manager for sounds (and.. other assets, while we're at it?)
+    this.shipExplosionSoundPool = new SoundPool("assets/sounds/grenade_explosion-soundbible.com.wav", null, 5);
+    this.asteroidExplosionSoundPool = new SoundPool("assets/sounds/rock_debris_explosion-freesfx.co.uk.mp3", null, 5);
+
+    this.bgm_track_list = ["assets/sounds/masskonfuzion-astro_ravenous.mp3", "assets/sounds/masskonfuzion-asterisk.mp3"];
+    var track_to_play = Math.floor( Math.random() * this.bgm_track_list.length );
+    this.bgm = new Sound(this.bgm_track_list[track_to_play]);
+    this.bgm.play({"volume": 0.5});    // TODO move bgm out to a sound/resource manager - make it possible to play a new song when the current song finishes. Also note: this bgm object gets passed through a state transition
 
     // Begin initializing game subsystems. Note that the order of operations is important
 
@@ -81,9 +92,8 @@ GameLogic.prototype.initialize = function() {
     xplodPERef.setTTLRange(0.5, 1.0);         // seconds
     xplodPERef.setLaunchDir(1.0, 0.0);        // launch base dir is the vector [1,0]
     xplodPERef.setAngleRange(0.0, 359.0);     // rotate the base launch dir by some amount
-    xplodPERef.setMinColor(128, 128, 128);    // rgb values (TODO set colors based on ship color)
-    xplodPERef.setMaxColor(255, 255, 255);    // rgb values (TODO set colors based on ship color)
-
+    xplodPERef.setMinColor(128, 128, 128);    // rgb values (note: placeholder; will be overwritten during gameplay)
+    xplodPERef.setMaxColor(255, 255, 255);    // rgb values (note: placeholder; will be overwritten during gameplay)
 
 
     // ----- Initialize Bullet Manager system
@@ -103,15 +113,13 @@ GameLogic.prototype.initialize = function() {
     astMgrRef.initialize(1, 32);
 
     // ----- Initialize spaceships
-    // TODO possibly make a Spaceship Manager or something similar - for when we add spaceship bots; or move this into a ship.initialize() function.. something
     // TODO don't hardcode the initial position -- use arena test for containment
-    // TODO don't hardcode the ship names (e.g. ship0); compute/generate those
+    // Note: ship0 is the player's ship
     this.addGameObject("ship0", new Spaceship());
     var shipRef = this.gameObjs["ship0"];
-    var shipConfigObj = { "imgObj": game.imgMgr.imageMap["ship0"].imgObj,
+    var shipConfigObj = { "imgObj": configObj.imgObj,
                           "initialPos": [400, 225],
                         };
-    // TODO update ship.initialize() to take in a reference to the collision mgr and to the particle engines as part of the shipConfigObj being passed in. Then, move that stuff into initialize()
     shipRef.initialize(shipConfigObj);
 
     this.collisionMgr.addCollider(shipRef.components["collision"]);   // Have to do the collision manager registration out here, because the spaceship is fully formed at this point (we can't do it in the spaceship constructor (in its current form) -- the parent obj is not passed in)
@@ -124,19 +132,21 @@ GameLogic.prototype.initialize = function() {
 
     // NOTE: because of the way the game engine/framework is designed, we have to add individual spaceships as GameObjects (e.g., so they can get assigned an ObjectID), and then if we want to have a "shipDict", we have to have a list of references to the ship GameObjects
     this.shipDict[shipRef.objectID] = "ship0";
+    this.characters[shipRef.objectID] = new Character();    // Note that this assignment happens AFTER we know the spaceship's objectID
+    this.characters[shipRef.objectID].callSign = game.settings.visible.callSign;
+    this.characters[shipRef.objectID].colorScheme.light = configObj.colorScheme.light;
+    this.characters[shipRef.objectID].colorScheme.medium = configObj.colorScheme.medium;
+    this.characters[shipRef.objectID].colorScheme.dark = configObj.colorScheme.dark;
 
 
     this.addGameObject("ship1", new Spaceship());
     shipRef = this.gameObjs["ship1"];
-
-
     shipConfigObj = { "imgObj": game.imgMgr.imageMap["ship1"].imgObj,
                       "initialPos": [50, 225],
                       "isAI": true,
                       "knowledge": this,
                       "aiProfile": "miner"
                     };
-    // TODO update ship.initialize() to take in a reference to the collision mgr and to the particle engines as part of the shipConfigObj being passed in. Then, move that stuff into initialize()
     shipRef.initialize(shipConfigObj);
 
     this.collisionMgr.addCollider(shipRef.components["collision"]);   // Have to do the collision manager registration out here, because the spaceship is fully formed at this point (we can't do it in the spaceship constructor (in its current form) -- the parent obj is not passed in)
@@ -149,6 +159,11 @@ GameLogic.prototype.initialize = function() {
 
     // NOTE: because of the way the game engine/framework is designed, we have to add individual spaceships as GameObjects (e.g., so they can get assigned an ObjectID), and then if we want to have a "shipDict", we have to have a list of references to the ship GameObjects
     this.shipDict[shipRef.objectID] = "ship1";
+    this.characters[shipRef.objectID] = new Character();
+    this.characters[shipRef.objectID].callSign = "Olympos";
+    this.characters[shipRef.objectID].colorScheme.light = [64, 16, 234];    // admittedly, this "light" color is still a pretty dark blue -- it matches the ship, though - colors taken using the GIMP color picker tool to the ship's png image file
+    this.characters[shipRef.objectID].colorScheme.medium = [48, 12, 158];   // roughly 2/3 of light
+    this.characters[shipRef.objectID].colorScheme.dark = [24, 6, 80];       // roughly 1/2 of medium
 
 
     this.addGameObject("ship2", new Spaceship());
@@ -161,7 +176,6 @@ GameLogic.prototype.initialize = function() {
                       "aiProfile": "hunter",
                       "aiHuntRadius": 800
                     };
-    // TODO update ship.initialize() to take in a reference to the collision mgr and to the particle engines as part of the shipConfigObj being passed in. Then, move that stuff into initialize()
     shipRef.initialize(shipConfigObj);
 
     this.collisionMgr.addCollider(shipRef.components["collision"]);   // Have to do the collision manager registration out here, because the spaceship is fully formed at this point (we can't do it in the spaceship constructor (in its current form) -- the parent obj is not passed in)
@@ -174,7 +188,11 @@ GameLogic.prototype.initialize = function() {
 
     // NOTE: because of the way the game engine/framework is designed, we have to add individual spaceships as GameObjects (e.g., so they can get assigned an ObjectID), and then if we want to have a "shipDict", we have to have a list of references to the ship GameObjects
     this.shipDict[shipRef.objectID] = "ship2";
-
+    this.characters[shipRef.objectID] = new Character();
+    this.characters[shipRef.objectID].callSign = "Artemis";
+    this.characters[shipRef.objectID].colorScheme.light = [87, 82, 82]; // "light" it matches the ship - collors taken using the GIMP color picker tool to the ship's png image file
+    this.characters[shipRef.objectID].colorScheme.medium = [29, 26, 26]; // roughly 2/3 of light
+    this.characters[shipRef.objectID].colorScheme.dark = [15, 13, 13];   // roughly 1/2 of medium
 
     // Create score keeping object
     for (var shipIDKey in this.shipDict) {
@@ -185,7 +203,6 @@ GameLogic.prototype.initialize = function() {
 };
 
 GameLogic.prototype.addGameObject = function(objName, obj) {
-    // TODO assign the current GameLogic.objectIDToAssign to the object (probably add to the GameObject prototype); increment the GameLogic object's objectIDToAssign
     this.objectIDToAssign += 1;
 
     this.gameObjs[objName] = obj;
@@ -207,7 +224,7 @@ GameLogic.prototype.draw = function(canvasContext) {
     canvasContext.fillStyle = 'black';
     canvasContext.fillRect(0,0, game.canvas.width, game.canvas.height);
 
-    // TODO replace with a proper camera class. Update the camera during the update cycle (allow camera to track any given object), then simply apply camera transform here
+    // TODO replace with a proper "camera" class. Update the camera during the update cycle (allow camera to track any given object), then simply apply camera transform here. This should also allow for easier effects, e.g. screen shake
     var camPos = vec2.create();
     var viewportCenter = vec2.create();
     vec2.set(viewportCenter, game.canvas.width / 2, game.canvas.height / 2);
@@ -241,7 +258,6 @@ GameLogic.prototype.processMessages = function(dt_s) {
         //console.log('Iterating over topic: ' + msg.topic);
 
         for (var handler of this.messageQueue._registeredListeners[msg.topic]) {
-            // TODO evaluate why we're storing the listeners as dicts {id: ref}; why not just use a list?
             handler["func"].call(handler["obj"], msg);
         }
     }
@@ -273,7 +289,6 @@ GameLogic.prototype.handleKeyDownEvent = function(evt) {
         this.keyCtrlMap["thrust"]["state"] = true;
 
         // Note that the payload of messages in the queue can vary depending on context. At a minimum, the message MUST have a topic
-        // TODO keep a reference to the player-controlled obj, instead of hard-coding?
         cmdMsg = { "topic": "GameCommand",
                    "command": "setThrustOn",
                    "targetObj": this.gameObjs["ship0"],
@@ -366,6 +381,10 @@ GameLogic.prototype.handleKeyUpEvent = function(evt) {
     // NOTE: UI controls are hard-coded currently; but they could also be stored in a key mapping,
     // like this.keyCtrlMap, for easy customization
     else if (evt.code == "Escape") {
+        if (this.bgm) {
+            this.bgm.stop();
+        }
+
         // TODO Pop up confirmation before exiting. Probably easiest to make a separate game state (i.e., stack it on top of the playing state)
         cmdMsg = { "topic": "UICommand",
                    "targetObj": this,
@@ -388,64 +407,9 @@ GameLogic.prototype.update = function(dt_s, config = null) {
         this.collisionMgr.update(dt_s);
     }
 
-    // Play sound effects? (TODO: the sound effects handler/manager should have its own little per-frame queue of sound effects to play. (Make it a set -- only 1 sound effect per cycle. If the event queue has 2 events to play the same sound effect, play only 1)
+    // Do game-over check
+    this.checkForGameOver(dt_s);
 
-    // TODO wrap this end-of-game detection into a function. Handle various game modes
-    switch (game.settings.visible.gameMode) {
-        case "Death Match":
-            for (var shipName in this.gameStats) {
-                var scoreObj = this.gameStats[shipName];
-
-                //TODO un-hardcode game mode -- make it selectable/configurable.
-                // ^^ Figure out what the right settings should be. e.g., gunsEnabled is there because I have a thought to make a kamikaze mode, where you can only attack by ramming into targets :-D :-D
-                // ^^ Then, here, check if gameMode == deathMatch, then the game ends when a player gets the right # of kills; else if gameMode == timeAttack, game ends when time's up, etc.
-
-                if (scoreObj.kills == game.settings.visible.gameModeSettings.deathMatch.shipKills) {
-                    console.log(shipName + " wins!!");
-
-                    // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
-                    cmdMsg = { "topic": "UICommand",
-                               "targetObj": this,
-                               "command": "changeState",
-                               "params": {"stateName": "GameOver",
-                                          "transferObj": {"displayMsg": shipName + " wins!!"} }
-                             };
-                    this.messageQueue.enqueue(cmdMsg);
-                }
-            }
-        break;
-
-        case "Time Attack":
-            this.timeAttackSecondsLeft -= dt_s;
-
-            if (this.timeAttackSecondsLeft <= 0.0) {
-
-                var winner = { "shipName": "",
-                               "kills": 0
-                             };
-
-                for (var shipName in this.gameStats) {
-                    var scoreObj = this.gameStats[shipName];
-
-                    if (scoreObj.kills > winner.kills ) {
-                        winner.shipName = shipName;
-                        winner.kills = scoreObj.kills;
-                    }
-                }
-                console.log(winner.shipName + " wins with " + winner.kills.toString() + " kills in " + game.settings.visible.gameModeSettings.timeAttack.timeLimit + "!!");
-
-                // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
-                // e.g. Most kills, best score, most deaths
-                cmdMsg = { "topic": "UICommand",
-                           "targetObj": this,
-                           "command": "changeState",
-                           "params": {"stateName": "GameOver",
-                                      "transferObj": {"displayMsg": winner.shipName  + " wins with " + winner.kills.toString() + " kills in " + game.settings.visible.gameModeSettings.timeAttack.timeLimit + "!!"} }
-                         };
-                this.messageQueue.enqueue(cmdMsg);
-            }
-        break;
-    }
 };
 
 GameLogic.prototype.sendCmdToGameObj = function(msg) {
@@ -493,30 +457,41 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             asteroidRef = msg.colliderB.parentObj;
         }
 
+        var playerShipRef = this.gameObjs["ship0"];     // NOTE: hard-coded reference to the player ship. I'm doing this because I want to finish this game... taking shortcuts now......
+        var sndVol = Math.max(0.1, 1.0 - (vec2.sqrDist(playerShipRef.components["physics"].currPos, spaceshipRef.components["physics"].currPos) / 2250000.0));      // 2250000 = 1500**2 is a magic number -- it's meant to be greater than the hypotenuse of the arena (the largest possible distance that could separate 2 objects) (but it's hardcoded (A) because I'm taking shortcuts, and (B) because I haven't made any additional levels/arenas.. partly because of the shortcuts
+
         // The collision can only count if the spaceship is both alived and "enabled" (i.e., not in the middle of a respawn)
         if (spaceshipRef.ableState == SpaceshipAbleStateEnum.enabled) {
-            // TODO rework GameCommand so that the caller doesn't need to know which object will handle the game command.  Have handlers register with the GameLogic obj, so the caller can simply put the GameCommand out
             numParticles = (asteroidRef.size + 1) * 8;  // The multiplier is a magic number; chosen because it created visually pleasing explosions, without too much performance hit
+
             cmdMsg = { "topic": "GameCommand",
                        "command": "createExplosion",
                        "targetObj": this,
                        "params": { "numParticles": numParticles,
-                                   "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ]
+                                   "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ],
+                                   "minColor": [64,64,64],
+                                   "maxColor": [255,255,255]
                                  }
                      };
             this.messageQueue.enqueue(cmdMsg);
+            this.asteroidExplosionSoundPool.play( {"volume": sndVol, "loop": false} ); // NOTE: technically, I should enqueue this, for a sound/resource handler to handle.. But I'm trying to finish this game, and I'm taking shortcuts now...
 
             numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
 
             var saveShipPos = vec2.clone(spaceshipRef.components["physics"].currPos);
+            var characterObj = this.characters[spaceshipRef.objectID];
+
             cmdMsg = { "topic": "GameCommand",
                        "command": "createExplosion",
                        "targetObj": this,
                        "params": { "numParticles": numParticles,
-                                   "center": [ saveShipPos[0], saveShipPos[1] ]
+                                   "center": [ saveShipPos[0], saveShipPos[1] ],
+                                   "minColor": characterObj.colorScheme.dark,
+                                   "maxColor": characterObj.colorScheme.light
                                  }
                      };
             this.messageQueue.enqueue(cmdMsg);
+            this.shipExplosionSoundPool.play( {"volume": sndVol, "loop": false} ); // NOTE: technically, I should enqueue this, for a sound/resource handler to handle.. But I'm trying to finish this game, and I'm taking shortcuts now...
 
             var fragRefDir = vec2.create();   // Create collision normal out here, and pass into the disableAndSpwan call (so we can get fancy with collision normals, e.g., with spaceship surfaces
             vec2.sub(fragRefDir, spaceshipRef.components["physics"].currPos, spaceshipRef.components["physics"].prevPos);
@@ -536,7 +511,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             this.spawnAtNewLocation(spaceshipRef, 75);
 
             var shipName = this.shipDict[spaceshipRef.objectID];    // NOTE: I hate that JS doesn't care that spaceshipObjectID is a string, but the keys in the dict/obj are int/float
-            this.gameStats[shipName].deaths += 1;   // TODO - now that there's a ship list, we need to map the ship ref to the player (either cpu or human)
+            this.gameStats[shipName].deaths += 1;
         }
 
     } else if (gameObjAType == "Bullet" && gameObjBType == "Asteroid" || gameObjBType == "Bullet" && gameObjAType == "Asteroid") {
@@ -585,10 +560,16 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                    "command": "createExplosion",
                    "targetObj": this,
                    "params": { "numParticles": numParticles,
-                               "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ]
+                               "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ],
+                               "minColor": [64,64,64],
+                               "maxColor": [255,255,255]
                              }
                  };
         this.messageQueue.enqueue(cmdMsg);
+
+        var playerShipRef = this.gameObjs["ship0"];     // NOTE: hard-coded reference to the player ship. I'm doing this because I want to finish this game... taking shortcuts now......
+        var sndVol = Math.max(0.1, 1.0 - (vec2.sqrDist(playerShipRef.components["physics"].currPos, asteroidRef.components["physics"].currPos) / 2250000.0));   // 2250000 = 1500**2 is a magic number -- it's meant to be greater than the hypotenuse of the arena (the largest possible distance that could separate 2 objects) (but it's hardcoded (A) because I'm taking shortcuts, and (B) because I haven't made any additional levels/arenas.. partly because of the shortcuts
+        this.asteroidExplosionSoundPool.play( {"volume": sndVol, "loop": false} ); // NOTE: technically, I should enqueue this, for a sound/resource handler to handle.. But I'm trying to finish this game, and I'm taking shortcuts now...
 
         // Note: in params, disableList is a list so we can possibly disable multiple asteroids at once; numToSpawn is the # of asteroids to spawn for each disabled asteroid. Can maybe be controlled by game difficulty level.
         cmdMsg = { "topic": "GameCommand",
@@ -621,7 +602,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             } else {
                 var shooterObjectID = this.lookupObjectID(bulletRef.emitterID, "Spaceship");
                 var shooterName = this.shipDict[shooterObjectID];  // NOTE: I hate that JS doesn't care that shooterObjectID is a string, but the keys in the dict/obj are int/float
-                    // If ship0 is the shooter, then increment human player's kills (TODO think about scaling up for local multiplayer?)
+                    // If ship0 is the shooter, then increment human player's kills
                 this.gameStats[shooterName].kills += 1;
                 this.gameStats[shooterName].score += this.settings["hidden"]["pointValues"]["kill"];
 
@@ -632,14 +613,21 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
 
                 numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
                 var saveShipPos = vec2.clone(spaceshipRef.components["physics"].currPos);
+                var characterObj = this.characters[spaceshipRef.objectID];
                 cmdMsg = { "topic": "GameCommand",
                            "command": "createExplosion",
                            "targetObj": this,
                            "params": { "numParticles": numParticles,
-                                       "center": [ saveShipPos[0], saveShipPos[1] ]
+                                       "center": [ saveShipPos[0], saveShipPos[1] ],
+                                       "minColor": characterObj.colorScheme.dark,
+                                       "maxColor": characterObj.colorScheme.light
                                      }
                          };
                 this.messageQueue.enqueue(cmdMsg);
+
+                var playerShipRef = this.gameObjs["ship0"];     // NOTE: hard-coded reference to the player ship. I'm doing this because I want to finish this game... taking shortcuts now......
+                var sndVol = Math.max(0.1, 1.0 - (vec2.sqrDist(playerShipRef.components["physics"].currPos, spaceshipRef.components["physics"].currPos) / 2250000.0));  // 2250000 = 1500**2 is a magic number -- it's meant to be greater than the hypotenuse of the arena (the largest possible distance that could separate 2 objects) (but it's hardcoded (A) because I'm taking shortcuts, and (B) because I haven't made any additional levels/arenas.. partly because of the shortcuts
+                this.shipExplosionSoundPool.play( {"volume": sndVol, "loop": false} );
 
                 cmdMsg = { "topic": "GameCommand",
                            "command": "disableBullet",
@@ -673,10 +661,16 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                    "command": "createExplosion",
                    "targetObj": this,
                    "params": { "numParticles": numParticles,
-                               "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ]
+                               "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ],
+                               "minColor": [64,64,64],
+                               "maxColor": [255,255,255]
                              }
                  };
         this.messageQueue.enqueue(cmdMsg);
+
+        var playerShipRef = this.gameObjs["ship0"];     // NOTE: hard-coded reference to the player ship. I'm doing this because I want to finish this game... taking shortcuts now......
+        var sndVol = Math.max(0.1, 1.0 - (vec2.sqrDist(playerShipRef.components["physics"].currPos, asteroidRef.components["physics"].currPos) / 2250000.0));    // 2250000 = 1500**2 is a magic number -- it's meant to be greater than the hypotenuse of the arena (the largest possible distance that could separate 2 objects) (but it's hardcoded (A) because I'm taking shortcuts, and (B) because I haven't made any additional levels/arenas.. partly because of the shortcuts
+        this.asteroidExplosionSoundPool.play( {"volume": sndVol, "loop": false} );
 
         var cmdMsg = { "topic": "GameCommand",
                        "command": "disableAsteroids",
@@ -695,18 +689,24 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             arenaRef = msg.colliderB.parentObj;
             spaceshipRef = msg.colliderA.parentObj;
         }
-        // TODO implement a "spawning" state -- maybe render some cool VFX and do a countdown or something
 
         numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
         var saveShipPos = vec2.clone(spaceshipRef.components["physics"]);
+        var characterObj = this.characters[spaceshipRef.objectID];
         cmdMsg = { "topic": "GameCommand",
                    "command": "createExplosion",
                    "targetObj": this,
                    "params": { "numParticles": numParticles,
-                               "center": [ saveShipPos[0], saveShipPos[1] ]
+                               "center": [ saveShipPos[0], saveShipPos[1] ],
+                               "minColor": characterObj.colorScheme.dark,
+                               "maxColor": characterObj.colorScheme.light
                              }
                  };
         this.messageQueue.enqueue(cmdMsg);
+
+        var playerShipRef = this.gameObjs["ship0"];     // NOTE: hard-coded reference to the player ship. I'm doing this because I want to finish this game... taking shortcuts now......
+        var sndVol = Math.max(0.1, 1.0 - (vec2.sqrDist(playerShipRef.components["physics"].currPos, spaceshipRef.components["physics"].currPos) / 2250000.0));  // 2250000 = 1500**2 is a magic number -- it's meant to be greater than the hypotenuse of the arena (the largest possible distance that could separate 2 objects) (but it's hardcoded (A) because I'm taking shortcuts, and (B) because I haven't made any additional levels/arenas.. partly because of the shortcuts
+        this.shipExplosionSoundPool.play( {"volume": sndVol, "loop": false} );
 
         // Note: 75 is a magic number; gives probably enough a cushion around the spaceship when it spawns at some random location
         this.spawnAtNewLocation(spaceshipRef, 75);
@@ -726,21 +726,31 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             numParticles = 24;  // 24 particles for a ship explosion. Maybe we shouldn't hardcode this; instead have a setting/config option
 
             var saveShipPos = vec2.clone(spaceshipARef.components["physics"].currPos);
+            var characterObj = this.characters[spaceshipARef.objectID];
             cmdMsg = { "topic": "GameCommand",
                        "command": "createExplosion",
                        "targetObj": this,
                        "params": { "numParticles": numParticles,
-                                   "center": [ saveShipPos[0], saveShipPos[1] ]
+                                   "center": [ saveShipPos[0], saveShipPos[1] ],
+                                   "minColor": characterObj.colorScheme.dark,
+                                   "maxColor": characterObj.colorScheme.light
                                  }
                      };
             this.messageQueue.enqueue(cmdMsg);
 
+            var playerShipRef = this.gameObjs["ship0"];     // NOTE: hard-coded reference to the player ship. I'm doing this because I want to finish this game... taking shortcuts now......
+            var sndVol = Math.max(0.1, 1.0 - (vec2.sqrDist(playerShipRef.components["physics"].currPos, spaceshipARef.components["physics"].currPos) / 2250000.0));     // 2250000 = 1500**2 is a magic number -- it's meant to be greater than the hypotenuse of the arena (the largest possible distance that could separate 2 objects) (but it's hardcoded (A) because I'm taking shortcuts, and (B) because I haven't made any additional levels/arenas.. partly because of the shortcuts
+            this.shipExplosionSoundPool.play( {"volume": sndVol, "loop": false} );
+
             var saveShipPos = vec2.clone(spaceshipBRef.components["physics"].currPos);
+            var characterObj = this.characters[spaceshipBRef.objectID];
             cmdMsg = { "topic": "GameCommand",
                        "command": "createExplosion",
                        "targetObj": this,
                        "params": { "numParticles": numParticles,
-                                   "center": [ saveShipPos[0], saveShipPos[1] ]
+                                   "center": [ saveShipPos[0], saveShipPos[1] ],
+                                   "minColor": characterObj.colorScheme.dark,
+                                   "maxColor": characterObj.colorScheme.light
                                  }
                      };
             this.messageQueue.enqueue(cmdMsg);
@@ -750,7 +760,7 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
             this.spawnAtNewLocation(spaceshipBRef, 75);
 
             var shipName = this.shipDict[spaceshipARef.objectID];    // NOTE: I hate that JS doesn't care that spaceshipObjectID is a string, but the keys in the dict/obj are int/float
-            this.gameStats[shipName].deaths += 1;   // TODO - now that there's a ship list, we need to map the ship ref to the player (either cpu or human)
+            this.gameStats[shipName].deaths += 1;
 
             shipName = this.shipDict[spaceshipBRef.objectID];
             this.gameStats[shipName].deaths += 1;
@@ -855,6 +865,8 @@ GameLogic.prototype.createExplosion = function(params) {
         // "center" is required
         xplodPERef.setPosition(params.center[0], params.center[1]);
         xplodPERef.emitParticle(game.fixed_dt_s);
+        xplodPERef.setMinColor(params.minColor[0], params.minColor[1], params.minColor[2]);
+        xplodPERef.setMaxColor(params.maxColor[0], params.maxColor[1], params.maxColor[2]);
     }
 };
 
@@ -879,10 +891,93 @@ GameLogic.prototype.doUICommand = function(msg) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            // TODO note how we're using the transferObj here. It should be like this everywhere we call changeState or pauseState or whatever
+            // Note how we're using the transferObj here. It should be like this everywhere we call changeState or pauseState or whatever
             var transferObj = msg.params.hasOwnProperty("transferObj") ? msg.params.transferObj : null;   // Use msg.params if it exists; else pass null
             gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
             break;
     }
 
 };
+
+
+GameLogic.prototype.checkForGameOver = function(dt_s) {
+    switch (game.settings.visible.gameMode) {
+        case "Death Match":
+            for (var shipID in this.gameStats) {
+                var scoreObj = this.gameStats[shipName];
+
+                if (scoreObj.kills == game.settings.visible.gameModeSettings.deathMatch.shipKills) {
+                    // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
+
+                    var shipObjectID = this.gameObjs[shipID].objectID;
+                    var characterName = this.characters[shipObjectID].callSign;
+                    var winner = { "characterName": characterName
+                                 }
+                    var gameOverInfo = { "winnerInfo": winner,
+                                         "settings": game.settings["visible"],
+                                         "stats": this.gameStats,
+                                         "shipDict" : this.shipDict,
+                                         "characters": this.characters
+                                       };
+
+                    // Transfer this GameLogicObject's bgm object into the GameOver state, so the music can keep playing
+                    var transferBGM = this.bgm; // should increment the reference count of the obj referenced by this.bgm by 1
+                    this.bgm = null;    // should leave transferBGM as-is, and set my this.bgm ref to null, reducing the ref count to the actual Sound obj by 1 (at this point, the ref count should be 1
+
+                    var cmdMsg = { "topic": "UICommand",
+                                   "targetObj": this,
+                                   "command": "changeState",
+                                   "params": {"stateName": "GameOver",
+                                              "transferObj": {"scoresAndStats": gameOverInfo, "bgmObj": transferBGM } 
+                                             }
+                                 };
+                    this.messageQueue.enqueue(cmdMsg);
+                }
+            }
+        break;
+
+        case "Time Attack":
+            this.timeAttackSecondsLeft -= dt_s;
+
+            if (this.timeAttackSecondsLeft <= 0.0) {
+
+                var winner = { "characterName": "",
+                               "kills": 0
+                             };
+
+                for (var shipID in this.gameStats) {
+                    var scoreObj = this.gameStats[shipID];
+
+                    var shipObjectID = this.gameObjs[shipID].objectID;
+                    var characterName = this.characters[shipObjectID].callSign;
+
+                    if (scoreObj.kills > winner.kills ) {
+                        winner.characterName= characterName;
+                        winner.kills = scoreObj.kills;
+                    }
+                }
+
+                    var transferBGM = this.bgm; // should increment the reference count of the obj referenced by this.bgm by 1
+                    this.bgm = null;    // should leave transferBGM as-is, and set my this.bgm ref to null, reducing the ref count to the actual Sound obj by 1 (at this point, the ref count should be 1
+
+                // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
+                // e.g. Most kills, best score, most deaths
+                var gameOverInfo = { "winnerInfo": winner,
+                                     "settings": game.settings["visible"],
+                                     "stats": this.gameStats,
+                                     "shipDict" : this.shipDict,
+                                     "characters": this.characters
+                                   };
+
+                var cmdMsg = { "topic": "UICommand",
+                               "targetObj": this,
+                               "command": "changeState",
+                               "params": {"stateName": "GameOver",
+                                          "transferObj": {"scoresAndStats": gameOverInfo, "bgmObj": transferBGM } 
+                                         }
+                             };
+                this.messageQueue.enqueue(cmdMsg);
+            }
+        break;
+    }
+}

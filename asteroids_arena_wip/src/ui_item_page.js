@@ -1,8 +1,8 @@
-// TODO make pages of UI items
+// NVM make pages of UI items
 // The page itself will be what menus were (i.e. they'll have a list of items, active item, all that
 
 
-// TODO also add other kinds of UI items (namely up/down and left/right arrow spinners, maybe text boxes, etc.
+// NVM also add other kinds of UI items (namely up/down and left/right arrow spinners, maybe text boxes, etc.
 
 
 function uiItemPage() {

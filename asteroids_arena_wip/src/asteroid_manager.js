@@ -17,12 +17,20 @@ function AsteroidManager () {
                              2: "astLarge"
                            };
 
+    // large asteroids are 32x32
+    // medium asteroids are 16x16
+    // small asteroids are 8x8
+    // asteroid sizes are given as follows: this.size = 2;  // Sizes are: 2=large, 1=medium, 0=small
+    // so we'll make a "halfSize" array that has the appropriate half-sizes we can looken, given the Asteroid's "size" property
+    this.asteroidHalfSizes = [4, 8, 16];   // used when initializing collision components for new asteroids
+
     this.collisionMgrRef = null;
 
     // REPLACE ALL THIS NONSENSE (note: we're pretty much copying from particle_emitter.js.. But Asteroids should not be particles
     this.asteroidSpawnParams = { "minSpeed": 3.0,
                                  "maxSpeed": 9.0
                                }
+
 }
 
 
@@ -46,6 +54,7 @@ AsteroidManager.prototype.initialize = function(initAsteroids, maxAsteroids) {
     var bannedLocations = this.createBannedLocationsList(70);  // The parameter is the radius from each banned location, within which asteroids cannot be spawned
     for (var i = 0; i < initAsteroids; i++) {
         // Note the "funcCalls" property - "params" is a list that, when passed into a function.apply() call, is "splatted" into individual parameters, similar to Python *args
+        // funcCalls call functions using the particle (in the particle system) as the "this" reference
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
                           "funcCalls": [ {"func": Asteroid.prototype.setSize, "params": [2]} ],
@@ -63,8 +72,6 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
     // 4 is a magic number -- the # of asteroids that can possibly result from shooting 1 large asteroid
     var totalAsteroids = this.activeAsteroids[2] + this.activeAsteroids[1] + this.activeAsteroids[0];
     if (this.maxAsteroids - freeSpacesNeeded >= 4) {
-        // TODO add some kind of level manager? (i.e. max # of asteroids that will be spawned in this level? Or, otherwise make this game a pure deathmatch, ending when ships are destroyed? Or, just play for time? I don't know what this game should be)
-
         var bannedLocations = this.createBannedLocationsList(70);
         var configObj = { "renderCompType": "image",
                           "imageRef": game.imgMgr.imageMap["astLarge"].imgObj,
@@ -89,7 +96,6 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
 
 
 AsteroidManager.prototype.resetAsteroidField = function() {
-    // TODO revisit what to do when you reset
     // This fn is meant to be called after setting max/init (or maybe we should reset when we initialize? Not sure..
 
 };
@@ -116,16 +122,14 @@ AsteroidManager.prototype.disableAsteroids = function(params) {
         astToDisable.disable( {"collisionMgrRef": this.collisionMgrRef} ); 
         this.activeAsteroids[astToDisable.size] -= 1;
         if (this.activeAsteroids[astToDisable.size] < 0) { throw new Error("activeAsteroids reached negative count"); }
-        // TODO trigger a particle explosion
     }
 };
 
 // Disable passed-in asteroid(s), and spawn new ones
-// TODO consider splitting into separate disable() and spawn() functions? (requires enqueueing 2 messages, instead of 1, when an asteroid is destroyed and a new one needs to be spawned)
 AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
     // params is a dict object
 
-    // TODO figure out why I designed this function to work on a list of asteroids (when I'm passing in only 1 asteroid to disable)
+    // NVM figure out why I designed this function to work on a list of asteroids (when I'm passing in only 1 asteroid to disable)
     for (var astToDisable of params.disableList) {
 
         var spawnPoint = vec2.clone(astToDisable.components["physics"].currPos);
@@ -136,7 +140,7 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         vec2.sub(astVel, astToDisable.components["physics"].currPos, astToDisable.components["physics"].prevPos);
         vec2.normalize(astVelDir, astVel);
 
-        // Note: there should be as many launchData items as params.numToSpawn  // TODO maybe launchData should be passed in?
+        // Note: there should be as many launchData items as params.numToSpawn  // NVM maybe launchData should be passed in?
         // NOTE: we/re dividing the velocity multiplier by game.fixed_dt_s because in this computation, we're dealing with velocity over 1 frame; the physicsComponent's setPosAndVel function assumes we're working with velocity over a full second, so we're dividing by dt, to compensate
         // We use 25 for posMult to create an offset far enough so that the 2 newly spawned asteroid fragments aren't colliding with each other
         var launchData = [ { "ang": glMatrix.toRadian(45), "dir": vec2.create(), "velMult": 2 / game.fixed_dt_s, "posMult": 25},
@@ -148,7 +152,6 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         if (this.activeAsteroids[astToDisable.size] < 0) { throw new Error("activeAsteroids reached negative count"); }
 
         var bannedLocations = this.createBannedLocationsList(70);
-        // TODO trigger a particle explosion
         if (astToDisable.size > 0) {
             var newSize = astToDisable.size - 1;
             var newSizeStr = this.asteroidSizeMap[newSize];
@@ -326,15 +329,15 @@ AsteroidManager.prototype.spawnNewAsteroid = function(dt_s, config) {
         }
         else {
 
-            // Throw and error if spawnNew was called with no config object. But really, we should have some kind of handling for a situation like this. E.g., reasonable defaults
+            // Throw an error if spawnNew was called with no config object. But really, we should have some kind of handling for a situation like this. E.g., reasonable defaults
             throw new Error("Asteroid spawn function was called with no configuration info.  Don't know how to construct the asteroid");
         }
 
         newAsteroid.alive = true;
-        newAsteroid.autoExpire = false;    // TODO evaluate -- might not need autoExpire anymore
+        newAsteroid.autoExpire = false;
         this.activeAsteroids[newAsteroid.size] += 1;
 
-        // Compute a launch velocity (don't use Math.floor() because we want floating point results
+        // Compute launch velocity, using speed as given/computed above
         var launchVel = vec2.create();
         vec2.scale(launchVel, asteroidDir, speed);
 
@@ -345,9 +348,27 @@ AsteroidManager.prototype.spawnNewAsteroid = function(dt_s, config) {
         // Note: we are able to add collision objects to the collision manager at this point, because the asteroids being are already fully formed objects
         // (i.e., we wait until after position and velocity and all that are set, so that the collision component update() call can work right)
         if ("collision" in newAsteroid.components) {
-            // Get a reference to the GameLogic object's collision manager
-            //vec2.copy(newAsteroid.components["collision"].center, spawnPos);    // Set the center of the collision component  // TODO - delete?
-            
+            // SUUUUUPER JANKY -- TODO clean up Asteroid collision component management (create once; after initial creation, only modify)
+            if (newAsteroid.components["collision"].points.length == 0) {   // and, for that matter, if tpoints and normals also have 0 length
+                newAsteroid.components["collision"].points.push(vec2.create());     // bottom left
+                newAsteroid.components["collision"].points.push(vec2.create());     // bottom right
+                newAsteroid.components["collision"].points.push(vec2.create());     // top right
+                newAsteroid.components["collision"].points.push(vec2.create());     // top left
+                newAsteroid.components["collision"].tpoints.push(vec2.create());               // TODO make a function, addPoint (or something) that adds a new point to points, and also creates an entry in tpoints and normals
+                newAsteroid.components["collision"].tpoints.push(vec2.create());
+                newAsteroid.components["collision"].tpoints.push(vec2.create());
+                newAsteroid.components["collision"].tpoints.push(vec2.create());
+                newAsteroid.components["collision"].normals.push(vec2.create());               // TODO make a function, addPoint (or something) that adds a new point to points, and also creates an entry in tpoints and normals
+                newAsteroid.components["collision"].normals.push(vec2.create());
+                newAsteroid.components["collision"].normals.push(vec2.create());
+                newAsteroid.components["collision"].normals.push(vec2.create());
+            }
+
+            vec2.set(newAsteroid.components["collision"].points[0], -this.asteroidHalfSizes[newAsteroid.size], this.asteroidHalfSizes[newAsteroid.size]);       // bottom left
+            vec2.set(newAsteroid.components["collision"].points[1], this.asteroidHalfSizes[newAsteroid.size], this.asteroidHalfSizes[newAsteroid.size]);        // bottom right
+            vec2.set(newAsteroid.components["collision"].points[2], this.asteroidHalfSizes[newAsteroid.size], -this.asteroidHalfSizes[newAsteroid.size]);       // top right
+            vec2.set(newAsteroid.components["collision"].points[3], -this.asteroidHalfSizes[newAsteroid.size], -this.asteroidHalfSizes[newAsteroid.size]);      // top left
+
             newAsteroid.components["collision"].update(0);     // Do a trivial update to make the collider compute its size and such
             this.collisionMgrRef.addCollider(newAsteroid.components["collision"]);
         }

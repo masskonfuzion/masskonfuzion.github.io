@@ -23,12 +23,15 @@
 <script src="src/gl-matrix.js" type="text/javascript"></script>
 <script src="src/math_utils.js" type="text/javascript"></script>
 <script src="src/application.js" type="text/javascript"></script>
+<script src="src/sound.js" type="text/javascript"></script>
+<script src="src/sound_pool.js" type="text/javascript"></script>
 <script src="src/timer.js" type="text/javascript"></script>
 <script src="src/queue_base.js" type="text/javascript"></script>
 <script src="src/message_queue.js" type="text/javascript"></script>
 <script src="src/image_manager.js" type="text/javascript"></script>
 <script src="src/ui_item_base.js" type="text/javascript"></script>
 <script src="src/ui_item_text.js" type="text/javascript"></script>
+<script src="src/ui_item_text_input.js" type="text/javascript"></script>
 <script src="src/ui_item_spinner.js" type="text/javascript"></script>
 <script src="src/game_object.js" type="text/javascript"></script>
 <script src="src/game_object_component.js" type="text/javascript"></script>
@@ -40,10 +43,12 @@
 <script src="src/game_state_how_to_play.js" type="text/javascript"></script>
 <script src="src/game_state_settings.js" type="text/javascript"></script>
 <script src="src/game_state_stats_overlay.js" type="text/javascript"></script>
+<script src="src/game_state_ship_select.js" type="text/javascript"></script>
 <script src="src/game_logic.js" type="text/javascript"></script>
 <script src="src/finite_state_machine.js" type="text/javascript"></script>
 <script src="src/physics_component.js" type="text/javascript"></script>
 <script src="src/render_component.js" type="text/javascript"></script>
+<script src="src/character.js" type="text/javascript"></script>
 <script src="src/spaceship.js" type="text/javascript"></script>
 <script src="src/particle_emitter.js" type="text/javascript"></script>
 <script src="src/particle.js" type="text/javascript"></script>
@@ -58,22 +63,25 @@
 <script src="src/arena.js" type="text/javascript"></script>
 
 <script type="text/javascript">
+// A note on comment prefixes:
+// TODO = active/outstanding to-do items
+// NVM = canceled to-do items
+// LL = lesson learned
+// NOTE = thoughts/notes
+
 var game = new GameApplication(800, 450);   // Global scope
 var frameID = null;
-var gameStatePlaying = new GameStatePlaying();      // TODO -- make the game states lazy load? (immediately-invoked function expression?). Or, another idea is to create a new state when switching to it. That enables garbage collection of states
-var gameStateMainMenu = new GameStateMainMenu();
-var gameStateCredits = new GameStateCredits();
-var gameStateHowToPlay = new GameStateHowToPlay();
-var gameStateSettings = new GameStateSettings();
-var gameStateGameOver = new GameStateStatsOverlay();    // TODO probably change the "StatsOverlay" part of this name to GameOver
 
-var gameStateMgr = new GameStateManager();  // TODO make game states belong to the manager?
-gameStateMgr.addState("Playing", gameStatePlaying);     // TODO consider constructing game states in the GameStateManager scope? States are currently global vars, but could just easily be local to the manager
-gameStateMgr.addState("MainMenu", gameStateMainMenu);
-gameStateMgr.addState("Credits", gameStateCredits);
-gameStateMgr.addState("HowToPlay", gameStateHowToPlay);
-gameStateMgr.addState("Settings", gameStateSettings);
-gameStateMgr.addState("GameOver", gameStateGameOver);
+var gameStateMgr = new GameStateManager();
+// NVM -- make the game states lazy load? (immediately-invoked function expression?). Or, another idea is to create a new state when switching to it. That enables garbage collection of states
+// NVM consider constructing game states in the GameStateManager scope? States are currently global vars, but could just easily be local to the manager
+gameStateMgr.addState( "Playing", new GameStatePlaying() );
+gameStateMgr.addState( "MainMenu", new GameStateMainMenu() );
+gameStateMgr.addState( "Credits", new GameStateCredits() );
+gameStateMgr.addState( "HowToPlay", new GameStateHowToPlay() );
+gameStateMgr.addState( "Settings", new GameStateSettings() );
+gameStateMgr.addState( "GameOver", new GameStateStatsOverlay() );       // NVM probably change the "StatsOverlay" part of this name to GameOver
+gameStateMgr.addState( "ShipSelect", new GameStateShipSelect() );
 
 
 // Trap keyboard events and forward them to game logic
@@ -104,8 +112,10 @@ function mainEntryPoint() {
     game.imgMgr.addImgToMap("astSmall", imgAsset_astSmall);
     game.imgMgr.addImgToMap("dab", imgAsset_dab);
 
+    // TODO add a sound manager
+
     // NOTE: all image loading must be done before initializing any GameStates (and/or any GameLogic objects) that might use images
-    gameStateMgr.changeState(gameStateMainMenu);
+    gameStateMgr.changeState(gameStateMgr.stateMap["MainMenu"]);
 
     start();
 }
@@ -148,7 +158,6 @@ function mainloop(timestamp)
         // The current state is the last state (i.e. if the state manager's array is 2 items, then currState() is array[1])
         for (var gameState of gameStateMgr.states) {
             gameState.preRender(game.context, game.fixed_dt_s);
-            //currState.preRender(game.context, game.fixed_dt_s);   // TODO delete this line
         }
 
 		game.timer.elapsed -= game.fixed_dt_s;
@@ -167,7 +176,7 @@ function mainloop(timestamp)
     <canvas id="canvas" width="800" height="450">Sorry, something went wrong... (But what was it.....?)</canvas>
     <p>
     <ul>
-        <li>W,A,S,D: Fly up, down, left, right</li>
+        <li>W,A,D: Thrust, turn left, turn right</li>
         <li>Left Shift: Fire weapon</li>
         <li>This game is a work in progress. Definitely in beta. There might be bugs!</li>
         <li>If it crashes, open you web browser console (probably the "F12" key); look for error messages</li>

@@ -5,6 +5,7 @@ function GameStateStatsOverlay() {
     this.messageQueue = null;
     this.activeItemIndex = 0;
     this.activeItem = null;
+    this.bgm = null;
 }
 
 GameStateStatsOverlay.prototype = Object.create(GameStateBase.prototype);
@@ -16,22 +17,72 @@ GameStateStatsOverlay.prototype.initialize = function(transferObj = null) {
     this.messageQueue.initialize(2);
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
 
-    // Get the message to display from the transfer object, passed in from the game logic object
-    this.uiItems.push( new uiItemText(transferObj.displayMsg, "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"} }) );
+    // create the end-of-game message display, based on the passed-in object
+    this.createDisplayMessage(transferObj.scoresAndStats);
+
     this.activeItemIndex = 0;
     this.activeItem = this.uiItems[this.activeItemIndex];
+
+    this.bgm = transferObj.bgmObj;
 
 };
 
 
 GameStateStatsOverlay.prototype.cleanup = function() {
     this.uiItems = [];
+    if (this.bgm) {
+        this.bgm.stop();
+    }
 };
 
 
 GameStateStatsOverlay.prototype.preRender = function(canvasContext, dt_s) {
 };
 
+// Create the game over display message (using menu/ui items)
+GameStateStatsOverlay.prototype.createDisplayMessage = function(infoObj) {
+    switch(infoObj.settings.gameMode) {
+        case "Death Match":
+        var winMsg = infoObj.winnerInfo.characterName + " wins!";
+        this.uiItems.push( new uiItemText(winMsg, "36px", "MenuFont", "white", 0.5, 0.35, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"} }) );
+
+        break;
+
+        case "Time Attack":
+        var winMsg = infoObj.winnerInfo.characterName  + " wins with " + infoObj.winnerInfo.kills.toString() + " kills in " + game.settings.visible.gameModeSettings.timeAttack.timeLimit + "!!";
+        this.uiItems.push( new uiItemText(winMsg, "36px", "MenuFont", "white", 0.5, 0.35, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"} }) );
+        break;
+    }
+
+    var i = 0;
+
+    // A couple of vars to control layout. NOTE: next time around, we'll use a layout object of some sort (maybe a JSON layout?)
+    var yNDC = 0.55;
+    var ySpacing = 0.1;
+
+    var objectIDForCharacterNameLookup = "";
+    var shipObjectID = "";
+    var characterName = "";
+
+    for (var shipID in infoObj.stats) {
+        // I could use Object.keys() and Object.values()... but I don't trust JavaScript.. O(n**2) lookup it is..
+        for (var shipObjectID in infoObj.shipDict) {
+            if (infoObj.shipDict[shipObjectID] == shipID) {
+                characterName = infoObj.characters[shipObjectID].callSign;
+                break;
+            }
+        }
+
+        this.uiItems.push( new uiItemText(characterName, "20px", "MenuFont", "white", 0.3, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("Kills:", "20px", "MenuFont", "white", 0.4, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].kills.toString(), "20px", "MenuFont", "white", 0.44, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("Deaths:", "20px", "MenuFont", "white", 0.52, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].deaths.toString(), "20px", "MenuFont", "white", 0.57, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.64, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].score.toString(), "20px", "MenuFont", "white", 0.72, yNDC + (i * ySpacing), "center", "middle", null ) );
+        i += 1;
+    }
+};
 
 GameStateStatsOverlay.prototype.render = function(canvasContext, dt_s) {
     // TODO maybe this game stats overlay state should have its own canvas context/object
@@ -47,7 +98,6 @@ GameStateStatsOverlay.prototype.render = function(canvasContext, dt_s) {
     }
 
     // Highlight active item
-    // TODO call getWidth() on active item; round up to nearest int (e.g. because measureText() returns float); multiply by 1.5. Make a rect
     var hlItem = this.uiItems[this.activeItemIndex];
     var hlWidth = Math.ceil( hlItem.getWidth(canvasContext) * 1.5 );
     var hlHeight = Math.ceil( hlItem.getHeight(canvasContext) * 1.5);
@@ -79,7 +129,6 @@ GameStateStatsOverlay.prototype.handleKeyboardInput = function(evt) {
                 this.activeItemIndex = (this.activeItemIndex + 1) % this.uiItems.length;
                 break;
             case "Enter":
-            case "Space":
                 // Enqueue an action to be handled in the postRender step. We want all actions (e.g. state changes, etc.) to be handled in postRender, so that when the mainloop cycles back to the beginning, the first thing that happens is the preRender step in the new state (if the state changed)
                 var cmdMsg = { "topic": "UICommand",
                                "targetObj": this,
@@ -99,15 +148,11 @@ GameStateStatsOverlay.prototype.processMessages = function(dt_s) {
 
     while (!this.messageQueue._empty) {
         //console.log('Processing message');
-        // NOTE: If the queue is initialized with dummy values, then this loop will iterate over dummy values
-        // It may be better to use a queue that is has an actual empty array when the queue is empty
-        // That way, this loop will not run unless items actually exist in the queue
         var msg = this.messageQueue.dequeue();
 
         //console.log('Iterating over topic: ' + msg.topic);
 
         for (var handler of this.messageQueue._registeredListeners[msg.topic]) {
-            // TODO evaluate why we're storing the listeners as dicts {id: ref}; why not just use a list?
             handler["func"].call(handler["obj"], msg);
         }
     }
@@ -125,7 +170,7 @@ GameStateStatsOverlay.prototype.doUICommand = function(msg) {
             // NOTE: This popState command calls the gameStateManager's resumeState(). There is a pushState() and popState() - maybe consolidate pauseState and resumeState into pushState and popState?
 
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            //gameStateMgr.resumeState();   // This is what we would call in an actual overlay. //TODO change the name of this to GameStateGameOver or something like that?
+            //gameStateMgr.resumeState();   // This is what we would call in an actual overlay. //TODO change the name of this state to GameStateGameOver or something like that?
             gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName]);
             break;
     }

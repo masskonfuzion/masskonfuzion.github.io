@@ -54,7 +54,6 @@ ParticleEmitter.prototype.registerParticleSystem = function(particleSys) {
 // Get the "next available particle" in the system, and initialize it
 // If getNextUsableParticle() fails, then this function should fail silently (at most, log to console)
 ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
-    // TODO update emitParticle to take in the type of particle to emit (or, e.g., info about how to initialize the particle. Use the Transfer Object pattern -- the object will contain config info re: particles with sprite rendering vs other type of rendering)
     var particle = this.registeredPS.getNextUsableParticle();
 
     if (particle) {
@@ -99,8 +98,7 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
                     // For now, we're only using static sprites
                     particle.components["render"].imgObj = config["imageRef"];
                 }
-                // TODO handle other render comp types (maybe animated sprite?)
-                // TODO also add a case to allow the config obj to specify a color, rather than image? Or should color & image be mutually exclusive? So many design considerations...
+                // TODO handle other render comp types (maybe animated sprite?). Also add a case to allow the config obj to specify a color, rather than image? Or should color & image be mutually exclusive? So many design considerations...
             } else {
                 this.setRandomParticleColor(particle);
             }
@@ -122,7 +120,7 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
 
                 while (!emitterPosIsValid) {
                     if (offsetAngle >= 360) {
-                        // If we've gone in a full circle and still not found a valid spawn location, give up and use the original (TODO maybe try some different methods?)
+                        // If we've gone in a full circle and still not found a valid spawn location, give up and use the original
                         break;  // out of while loop
                     }
 
@@ -148,12 +146,23 @@ ParticleEmitter.prototype.emitParticle = function(dt_s, config = null) {
 
             }
 
-            // Do any "post-processing" using any funcCalls defined in the config object
+            // Do any "post-processing" of the particle, using any funcCalls defined in the config object
             if (config.hasOwnProperty("funcCalls")) {
                 for (funcCallDef of config["funcCalls"]) {
                     // apply() takes in a list and applies the items as params to the function (similar to *args in Python)
                     // Passing null into params is equivalent to calling func()
                     funcCallDef["func"].apply(particle, funcCallDef["params"]);
+                }
+            }
+
+            // call an external function (e.g. play a sound)
+            // NOTE: I really hate this design.. My next engine will have better decoupling of events from the objects that generate those events
+            // Also NOTE: Here, if extFuncCalls is used to play a sound effect, it does not queue the sound event the same way that other events are enqueued, to be handled by various handlers.. Because I want to finish this game and I'm cutting corners
+            if (config.hasOwnProperty("extFuncCalls")) {
+                for (funcCallDef of config["extFuncCalls"]) {
+                    // apply() takes in a list and applies the items as params to the function (similar to *args in Python)
+                    // Passing null into params is equivalent to calling func()
+                    funcCallDef["func"].apply(funcCallDef["this"], funcCallDef["params"]);
                 }
             }
 
@@ -288,7 +297,6 @@ ParticleEmitter.prototype.update = function(dt_s, config = null) {
         if (config) {
             // Note that with multiple emitPoints, the emitter emits them all simultaneously.
             // I'm debating how to do round-robin emission (i.e., should the ParticleEmitter object be responsible for the logic of round-robin, or should the object that owns the emitter (e.g. the gun/thruster/etc)?
-            // TODO or.. maybe make emitPoints optional, also with a flag: "has multiple emit points", or something. Or, maybe no flag. just, if you use emitPoints, then you get multiple points; else, you'll use the already-configured emitter position
 
             // use single or multiple emit points
             if (config.hasOwnProperty("emitPoints")) {
@@ -301,7 +309,6 @@ ParticleEmitter.prototype.update = function(dt_s, config = null) {
                 this.emitParticle(dt_s, config);
             }
 
-            // TODO any other params to add to the config obj for the particle emitter?
         } else {
             // if there's no config obj, simply emit a particle based on originally set parameters
             // TODO -- fix this particle emission in the case where no config obj is given.  Currently, particles launched in this case have no velocity

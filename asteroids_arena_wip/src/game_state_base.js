@@ -1,4 +1,4 @@
-// TODO at some point, maybe change "GameState..." to "ApplicationState..." The idea is that a "Game/Application State" represents a separate phase of program execution (playing game, main menu, etc)
+// NVM at some point, maybe change "GameState..." to "ApplicationState..." The idea is that a "Game/Application State" represents a separate phase of program execution (playing game, main menu, etc)
 function GameStateBase() {
     this._name = ""; // Set this._name in subclass constructors
 

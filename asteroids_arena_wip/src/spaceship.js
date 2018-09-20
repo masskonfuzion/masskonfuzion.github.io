@@ -17,7 +17,7 @@ function Spaceship() {
     this.addComponent("render", new RenderComponentSprite());
     this.addComponent("thrustPE", new ParticleEmitter());           // Particle emitter for rocket/thruster exhaust particle system
     this.addComponent("gunPE", new ParticleEmitter());              // Particle emitter for bullet/guns particle system
-    this.addComponent("collision", new CollisionComponentAABB());
+    this.addComponent("collision", new CollisionComponentPolygon());
 
     var thrustPE = this.components["thrustPE"];  // get a reference to our own component, to shorten the code
     thrustPE.setVelocityRange(150.0, 300.0);
@@ -63,6 +63,21 @@ Spaceship.prototype.initialize = function(configObj) {
     // TODO test for existence of configObj and its properties
     this.components["render"].setImgObj(configObj["imgObj"]);
     this.components["physics"].setPosition(configObj["initialPos"][0], configObj["initialPos"][1]);
+
+    // A janky, hard-coded way to initialize the bounding box for this spaceship, as a bounding box.
+    // TODO replace this with something smarter (ideally a function or a data load from.. file.. or something.. based on the spaceship geometry)
+    this.components["collision"].points.push(vec2.fromValues(-16, 16));     // bottom left
+    this.components["collision"].points.push(vec2.fromValues(16, 16));      // bottom right
+    this.components["collision"].points.push(vec2.fromValues(16, -16));     // top right
+    this.components["collision"].points.push(vec2.fromValues(-16, -16));    // top left
+    this.components["collision"].tpoints.push(vec2.create());               // TODO make a function, addPoint (or something) that adds a new point to points, and also creates an entry in tpoints and normals
+    this.components["collision"].tpoints.push(vec2.create());
+    this.components["collision"].tpoints.push(vec2.create());
+    this.components["collision"].tpoints.push(vec2.create());
+    this.components["collision"].normals.push(vec2.create());               // TODO make a function, addPoint (or something) that adds a new point to points, and also creates an entry in tpoints and normals
+    this.components["collision"].normals.push(vec2.create());
+    this.components["collision"].normals.push(vec2.create());
+    this.components["collision"].normals.push(vec2.create());
     this.components["collision"].update(0);    // Do an update to force the collision component to compute its boundaries
 
     // NOTE: can't set particle emitter IDs in the constructor because the objectID for this object has not been set at that point
@@ -121,24 +136,6 @@ Spaceship.prototype.initialize = function(configObj) {
 
 // Override the default update()
 Spaceship.prototype.update = function(dt_s, config = null) {
-    //if (this.aiControlled) {
-    //    // TODO compute nearest threat (use the quadtree to prune calculations)
-    //    // The quadtree is owned by the gameLogic object, which is also the parent obj of all spaceships
-    //    // NOTE: it would be safer to verify that the gameLogic object has a collisionMgr, but whatever, we know it does..
-    //    var qt = this.parentObj.collisionMgr.quadTree;
-
-    //    var nearObjs = [];
-    //    // Clear the near objs list
-    //    qt.retrieve(nearObjs, this.components["collision"]);
-
-    //    var minDist = Number.MAX_SAFE_INTEGER;
-    //    for (var nearObj of nearObjs) {
-    //        var sqrDist = 0; // TODO standardize a way to get distance to an object -- maybe use closest point or some other math
-    //        // TODO 2018-01-11 - pick up from here
-    //        // TODO 2018-04-12 - Hmmm.... pick up what from here? What was I trying to do? Always keep a reference to the nearest threat, no matter what state the AI is in? Possibly
-    //    }
-    //}
-
     // Iterate over all components and call their respective update() function
     for (var compName in this.components) {
         if (this.components.hasOwnProperty(compName)) {
@@ -195,7 +192,25 @@ Spaceship.prototype.update = function(dt_s, config = null) {
 
                     myGunPEComp.setPosition(pePos[0], pePos[1]);
                     // NOTE: we emit 1 particle per update, but as we add different types of weapons, that can change
-                    updateConfigObj = { "emitPoints": [ {"position": pePos, "direction": launchDir} ] };
+                    var gameLogic = this.parentObj; // parentObj is set by addGameObject in the gameLogic object, during game initialization, when this spaceship is created
+
+                    // Note: below, we're hard-coding references to the player's ship (the "ship0" identifier -- because it's easy..
+                    var sndOptions = {"loop": false};
+                    if (this.objectID == gameLogic.gameObjs["ship0"].objectID) {
+                        // If I am the player's ship, set volume to 1.0
+                        sndOptions.volume = 1.0;
+                    }
+                    else {
+                        // 2250000 in the calculation below is a magic number
+                        // It's 1500**2, which is larger than the square of the hypotenuse of the 1280x720 arena
+                        // (i.e., the largest distance that could separate 2 items in the arena)
+                        // I had planned to make more arenas, but I may just stop at 1 -- taking shortcuts to finish this game
+                        sndOptions.volume = Math.max(0.1, 1.0 - ( vec2.sqrDist(this.components["physics"].currPos, gameLogic.gameObjs["ship0"].components["physics"].currPos) / 2250000.0 ));
+                    }
+
+                    updateConfigObj = { "emitPoints": [ {"position": pePos, "direction": launchDir} ],
+                                        "extFuncCalls": [ {"func": SoundPool.prototype.play, "this": gameLogic.bulletSoundPool, "params": [ sndOptions ]} ]
+                                      };
                     break;
             }
 

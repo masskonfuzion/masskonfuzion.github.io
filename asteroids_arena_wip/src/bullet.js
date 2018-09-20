@@ -6,7 +6,7 @@ function Bullet () {
     // TODO enable the sprite rendering component. Make it possible for the gun's bullet emitter to set the image to be used by a particular bullet object in the bullet object pool. (right now, by not using the sprite component, we'll use the default Particle render comp, which is a circle). 
     //// Each bullet can reference a particular image file for its rendering(e.g. small, medium, or large). The BulletManager will control all bullets
     //this.addComponent("render", new RenderComponentSprite());
-    this.addComponent("collision", new CollisionComponentAABB());
+    this.addComponent("collision", new CollisionComponentPolygon());    // as of 2018-08-27, bullets are circles with radius 3 (they inherit these properties from Particles). TODO: Bullets shouldn't be Particles...
 
     this.hitPower = 1;
     this.autoExpire = false;    // override the Particle's autoExpire property

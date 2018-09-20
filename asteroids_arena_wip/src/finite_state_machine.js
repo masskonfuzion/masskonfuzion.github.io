@@ -131,7 +131,6 @@ FSMConditionInterface.prototype.test = function() {
 
 
 function FSMConditionListInterface(condList) {
-    // TODO make sure we're properly handling lists - possibly need to do a deep copy?
     this.condList = condList;
 }
 FSMConditionListInterface.prototype.test = function() {
@@ -334,9 +333,6 @@ FSM.prototype.initialize = function(objRef = null) {
 
 //Iterate through the transitions of the current state, evaluating the control conditions.
 //If no conditions evaluate to True, then by default, stay in the same state.
-// TODO investigate keeping a "state stack" so that, as we transition into/out of states, we can
-// know which states we came from. Could be an alternative approach to enabling alarm behaviors
-// than the approach given in Game AI Programming (book), by Ian Millington
 FSM.prototype.checkTransitions = function() {
    for (var transition of this.current_state.transitions) {
        if (transition.test()) {

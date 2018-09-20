@@ -102,7 +102,6 @@ GameStateHowToPlay.prototype.handleKeyboardInput = function(evt) {
                 }
                 break;
             case "Enter":
-            case "Space":
                 // Enqueue an action to be handled in the postRender step. We want all actions (e.g. state changes, etc.) to be handled in postRender, so that when the mainloop cycles back to the beginning, the first thing that happens is the preRender step in the new state (if the state changed)
 
                 // If we have an active item, deactivate it
@@ -155,7 +154,6 @@ GameStateHowToPlay.prototype.processMessages = function(dt_s) {
         //console.log('Iterating over topic: ' + msg.topic);
 
         for (var handler of this.messageQueue._registeredListeners[msg.topic]) {
-            // TODO evaluate why we're storing the listeners as dicts {id: ref}; why not just use a list?
             handler["func"].call(handler["obj"], msg);
         }
     }

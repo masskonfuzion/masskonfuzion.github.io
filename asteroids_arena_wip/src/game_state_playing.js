@@ -7,7 +7,8 @@ GameStatePlaying.prototype.constructor = GameStatePlaying;
 
 GameStatePlaying.prototype.initialize = function(transferObj = null) {
     this.gameLogic = new GameLogic();
-    this.gameLogic.initialize();
+    this.gameLogic.initialize(transferObj);
+
 };
 
 GameStatePlaying.prototype.cleanup = function() {
@@ -40,10 +41,12 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
     // TODO store overlay NDC layouts in an object, to avoid setting vars every frame
 
     var i = 0;
-    for (var shipName in this.gameLogic.gameStats) {
+    for (var shipID in this.gameLogic.gameStats) {
+        var shipObjectID = this.gameLogic.gameObjs[shipID].objectID;
+        var characterName = this.gameLogic.characters[shipObjectID].callSign;
         textPosY = 0.066667 + i * 0.05;     // These are "magic numbers" -- tweaked manually, based on what looked good
 
-        shipNamePosNDC = [0.20, textPosY];
+        characterNamePosNDC = [0.15, textPosY];
 
         deathsLabelPosNDC = [0.32, textPosY];      // NDCs go from 0 to 1 on each axis
         deathsPosNDC = [0.40, textPosY];      // NDCs go from 0 to 1 on each axis
@@ -55,18 +58,21 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
         scorePosNDC = [0.80, textPosY];      // NDCs go from 0 to 1 on each axis
 
         canvasContext.font = "18px GameFont";  // Testing
-        canvasContext.fillStyle = jankyListOfScoreColors[i];  // TODO Eventually:  change color to match player ship color (or, store it with a spaceship profile of some sort, which is enabled when the player selects a ship)
+
+        var colorSchemeRef = this.gameLogic.characters[shipObjectID].colorScheme.light;
+        canvasContext.fillStyle = "rgb(" + colorSchemeRef[0] + "," + colorSchemeRef[1] + "," + colorSchemeRef[2] + ")";
+
         // TODO wrap NDC calculation in function
-        canvasContext.fillText(shipName, shipNamePosNDC[0] * canvasContext.canvas.width, shipNamePosNDC[1] * canvasContext.canvas.height);
+        canvasContext.fillText(characterName, characterNamePosNDC[0] * canvasContext.canvas.width, characterNamePosNDC[1] * canvasContext.canvas.height);
 
         canvasContext.fillText("Deaths", deathsLabelPosNDC[0] * canvasContext.canvas.width, deathsLabelPosNDC[1] * canvasContext.canvas.height);
-        canvasContext.fillText(this.gameLogic.gameStats[shipName].deaths, deathsPosNDC[0] * canvasContext.canvas.width, deathsPosNDC[1] * canvasContext.canvas.height);
+        canvasContext.fillText(this.gameLogic.gameStats[shipID].deaths, deathsPosNDC[0] * canvasContext.canvas.width, deathsPosNDC[1] * canvasContext.canvas.height);
 
         canvasContext.fillText("Kills", killsLabelPosNDC[0] * canvasContext.canvas.width, killsLabelPosNDC[1] * canvasContext.canvas.height);
-        canvasContext.fillText(this.gameLogic.gameStats[shipName].kills, killsPosNDC[0] * canvasContext.canvas.width, killsPosNDC[1] * canvasContext.canvas.height);
+        canvasContext.fillText(this.gameLogic.gameStats[shipID].kills, killsPosNDC[0] * canvasContext.canvas.width, killsPosNDC[1] * canvasContext.canvas.height);
 
         canvasContext.fillText("Score", scoreLabelPosNDC[0] * canvasContext.canvas.width, scoreLabelPosNDC[1] * canvasContext.canvas.height);
-        canvasContext.fillText(this.gameLogic.gameStats[shipName].score, scorePosNDC[0] * canvasContext.canvas.width, scorePosNDC[1] * canvasContext.canvas.height);
+        canvasContext.fillText(this.gameLogic.gameStats[shipID].score, scorePosNDC[0] * canvasContext.canvas.width, scorePosNDC[1] * canvasContext.canvas.height);
         i += 1;
     }
     
@@ -83,6 +89,7 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
         var sSec = iSec < 10 ? iSec.toString().padStart(2, "0") : iSec.toString();    // Use padStart() to 0-pad seconds
         var gameTimeLeft = sMin + ":" + sSec
 
+        canvasContext.fillStyle = "lightgray";
         canvasContext.fillText("Time", timeLabelPosNDC[0] * canvasContext.canvas.width, timeLabelPosNDC[1] * canvasContext.canvas.height);
         canvasContext.fillText(gameTimeLeft, timePosNDC[0] * canvasContext.canvas.width, timePosNDC[1] * canvasContext.canvas.height);
     }

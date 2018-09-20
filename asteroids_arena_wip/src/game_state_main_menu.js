@@ -5,7 +5,6 @@ function GameStateMainMenu() {
     this.uiItems = [];
 
     this.messageQueue = null;
-
 }
 
 GameStateMainMenu.prototype = Object.create(GameStateBase.prototype);
@@ -18,16 +17,21 @@ GameStateMainMenu.prototype.initialize = function(transferObj = null) {
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
     
     // NOTE: game is a global object
-    this.uiItems.push( new uiItemText("Play Game", "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "Playing"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
+    this.uiItems.push( new uiItemText("Play Game", "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "ShipSelect"}}) );  // stateName is the name of the state obj in the global scope
     this.uiItems.push( new uiItemText("Settings", "32px", "MenuFont", "white", 0.5, 0.55, "center", "middle", {"command": "changeState", "params": {"stateName": "Settings"}}) );
     this.uiItems.push( new uiItemText("How to Play", "32px", "MenuFont", "white", 0.5, 0.65, "center", "middle", {"command": "changeState", "params": {"stateName": "HowToPlay"}}) );
     this.uiItems.push( new uiItemText("Credits", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "Credits"}}) );
 
     this.activeItemIndex = 0;
     this.activeItem = this.uiItems[this.activeItemIndex];
+
+    // TODO move bgm out to a sound/resource manager. We're just testing here -- make the BGM/sound manager global (or, at least not actually "global", but visible to all game states)
+    this.bgm = new Sound("assets/sounds/masskonfuzion-horizon.mp3");
+    this.bgm.play({"volume": 0.7});    // TODO move bgm out to a sound/resource manager
 };
 
 GameStateMainMenu.prototype.cleanup = function() {
+    this.bgm.stop();    // TODO move bgm out to a sound/resource manager
 };
 
 GameStateMainMenu.prototype.preRender = function(canvasContext, dt_s) {
@@ -78,7 +82,6 @@ GameStateMainMenu.prototype.handleKeyboardInput = function(evt) {
                 this.activeItemIndex = (this.activeItemIndex + 1) % this.uiItems.length;
                 break;
             case "Enter":
-            case "Space":
                 // Enqueue an action to be handled in the postRender step. We want all actions (e.g. state changes, etc.) to be handled in postRender, so that when the mainloop cycles back to the beginning, the first thing that happens is the preRender step in the new state (if the state changed)
                 var cmdMsg = { "topic": "UICommand",
                                "targetObj": this,
@@ -106,7 +109,6 @@ GameStateMainMenu.prototype.processMessages = function(dt_s) {
         //console.log('Iterating over topic: ' + msg.topic);
 
         for (var handler of this.messageQueue._registeredListeners[msg.topic]) {
-            // TODO evaluate why we're storing the listeners as dicts {id: ref}; why not just use a list?
             handler["func"].call(handler["obj"], msg);
         }
     }

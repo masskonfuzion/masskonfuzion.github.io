@@ -60,6 +60,13 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
     uiItemTimeLimitSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
     this.uiItems.push( uiItemTimeLimitSetting );
 
+    this.uiItems.push( new uiItemText("Call Sign", "32px", "MenuFont", "white", 0.05, 0.60, "left", "middle") );
+    var uiItemCallsignInput = new uiItemTextInput("", "32px", "MenuFont", "white", 0.25, 0.60, "left", "middle");
+    uiItemCallsignInput.setBoundObj(game.settings.visible);
+    uiItemCallsignInput.setBoundKey("callSign");
+    uiItemCallsignInput.getTextFromBoundValue();
+    this.uiItems.push( uiItemCallsignInput );
+
 
     this.uiItems.push( new uiItemText("Controls", "32px", "MenuFont", "white", 0.55, 0.2, "left", "middle") );
     this.uiItems.push( new uiItemText("Thrust", "24px", "MenuFont", "white", 0.55, 0.25, "left", "middle") );
@@ -86,6 +93,7 @@ GameStateSettings.prototype.cleanup = function() {
 
     // Save settings to localStorage. We have to JSON.stringify() the object, because localStorage wants key/value pairs of strings (even numbers get saved as strings)
     // TODO maybe the localStorage saving shouldn't happen in cleanup(), but in the handler for the return action
+    // TODO - save callsign on exit frmo settings menu
     localStorage.setItem('settings', JSON.stringify(game.settings));
 };
 
@@ -155,6 +163,7 @@ GameStateSettings.prototype.handleKeyboardInput = function(evt) {
                     this.highlightedItem = this.uiItems[this.highlightedItemIndex];
                 }
                 break;
+            // TODO - correct KeyDown to KeyUp, everywhere
             case "ArrowLeft":
                 var cmdMsg = { "topic": "UICommand",
                                "targetObj": this,
@@ -174,7 +183,6 @@ GameStateSettings.prototype.handleKeyboardInput = function(evt) {
                 this.messageQueue.enqueue(cmdMsg);
                 break;
             case "Enter":
-            case "Space":
                 // Enqueue an action to be handled in the postRender step. We want all actions (e.g. state changes, etc.) to be handled in postRender, so that when the mainloop cycles back to the beginning, the first thing that happens is the preRender step in the new state (if the state changed)
 
                 // If we have an active item, deactivate it
@@ -208,6 +216,16 @@ GameStateSettings.prototype.handleKeyboardInput = function(evt) {
                     }
                 }
                 break;
+            default:
+                //Send ActiveUIItem_HandleEvent_KeyDown_Misc, which is a generic event - for example, with text input boxes, this sends regular typing keypresses to the box
+                var cmdMsg = { "topic": "UICommand",
+                               "targetObj": this,
+                               "command": "sendUserInputToActiveItem",
+                               "params": { "event": "ActiveUIItem_HandleEvent_KeyUp_Misc", "eventObj": evt }
+                             };
+                this.messageQueue.enqueue(cmdMsg);
+                break;
+                
         }
     }
 };
@@ -227,7 +245,6 @@ GameStateSettings.prototype.processMessages = function(dt_s) {
         //console.log('Iterating over topic: ' + msg.topic);
 
         for (var handler of this.messageQueue._registeredListeners[msg.topic]) {
-            // TODO evaluate why we're storing the listeners as dicts {id: ref}; why not just use a list?
             handler["func"].call(handler["obj"], msg);
         }
     }
