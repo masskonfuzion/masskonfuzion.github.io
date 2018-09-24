@@ -8,6 +8,8 @@ function GameStateHowToPlay() {
 
     this.activeItemIndex = -1;      // -1 means "no active selection"; but probably rely on the value of activeItem itself to determine whether or not the user is interacting with an item
     this.activeItem = null;         // Active/selected item
+
+    this.bgm = null;
 }
 
 GameStateHowToPlay.prototype = Object.create(GameStateBase.prototype);
@@ -35,10 +37,20 @@ GameStateHowToPlay.prototype.initialize = function(transferObj = null) {
         this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
     }
     this.highlightedItem = this.uiItems[this.highlightedItemIndex];
+
+    // Get background music player object
+    if (transferObj && transferObj.bgmObj) {
+        this.bgm = transferObj.bgmObj;
+    }
+    // Note: no else case for the bgmObj.. technically, we shouldn't even need the "if", because there should always be a bgmObj coming from the previous state (which should always be the MainMenu)
 };
 
 GameStateHowToPlay.prototype.cleanup = function() {
     this.uiItems = [];
+
+    if (this.bgm) {
+        this.bgm.stop();    // TODO move bgm out to a sound/resource manager
+    }
 };
 
 GameStateHowToPlay.prototype.render = function(canvasContext, dt_s) {
@@ -170,7 +182,13 @@ GameStateHowToPlay.prototype.doUICommand = function(msg) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName]);
+            var transferBGM = null;
+            if (this.bgm) {
+                transferBGM = this.bgm;
+                this.bgm = null;
+            }
+            var transferObj = {"bgmObj": transferBGM};
+            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
             break;
     }
 

@@ -17,21 +17,31 @@ GameStateMainMenu.prototype.initialize = function(transferObj = null) {
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
     
     // NOTE: game is a global object
-    this.uiItems.push( new uiItemText("Play Game", "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "ShipSelect"}}) );  // stateName is the name of the state obj in the global scope
-    this.uiItems.push( new uiItemText("Settings", "32px", "MenuFont", "white", 0.5, 0.55, "center", "middle", {"command": "changeState", "params": {"stateName": "Settings"}}) );
-    this.uiItems.push( new uiItemText("How to Play", "32px", "MenuFont", "white", 0.5, 0.65, "center", "middle", {"command": "changeState", "params": {"stateName": "HowToPlay"}}) );
-    this.uiItems.push( new uiItemText("Credits", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "Credits"}}) );
+    this.uiItems.push( new uiItemText("Play Game", "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "ShipSelect", "sendBGM": true}}) );  // stateName is the name of the state obj in the global scope
+    this.uiItems.push( new uiItemText("Settings", "32px", "MenuFont", "white", 0.5, 0.55, "center", "middle", {"command": "changeState", "params": {"stateName": "Settings", "sendBGM": true}}) );
+    this.uiItems.push( new uiItemText("How to Play", "32px", "MenuFont", "white", 0.5, 0.65, "center", "middle", {"command": "changeState", "params": {"stateName": "HowToPlay", "sendBGM": true}}) );
+    this.uiItems.push( new uiItemText("Credits", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "Credits", "sendBGM": false}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM
 
     this.activeItemIndex = 0;
     this.activeItem = this.uiItems[this.activeItemIndex];
 
+    this.bgm = null;
     // TODO move bgm out to a sound/resource manager. We're just testing here -- make the BGM/sound manager global (or, at least not actually "global", but visible to all game states)
-    this.bgm = new Sound("assets/sounds/masskonfuzion-horizon.mp3");
-    this.bgm.play({"volume": 0.7});    // TODO move bgm out to a sound/resource manager
+    if (transferObj && transferObj.bgmObj) {
+        this.bgm = transferObj.bgmObj;
+    }
+    else {
+        this.bgm = new Sound("assets/sounds/masskonfuzion-horizon.mp3");
+        this.bgm.play({"volume": 0.7});     // TODO move bgm out to a sound/resource manager
+                                            // TODO rig the MainMenu up to pass an already-playing bgm object to other menus (e.g. Settings), and to continue playing when returning from, e.g. Settings; but to stop Playing when giong into the GamePlaying state
+    }
 };
 
 GameStateMainMenu.prototype.cleanup = function() {
-    this.bgm.stop();    // TODO move bgm out to a sound/resource manager
+    // "if" here, because this.bgm might be null, depending on which state we're switching to. See GameStateMainMenu.prototype.doUICommand
+    if (this.bgm) {
+        this.bgm.stop();    // TODO move bgm out to a sound/resource manager
+    }
 };
 
 GameStateMainMenu.prototype.preRender = function(canvasContext, dt_s) {
@@ -125,7 +135,20 @@ GameStateMainMenu.prototype.doUICommand = function(msg) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName]);
+            // Note: if you saw the BGM transfer logic in game_logic.js, you'll notice that it's different here. We are building a transferObj here, whereas in game_logic.js, the obj is already constructed by this point.
+
+            var transferObj;
+            if (msg.params.sendBGM) {
+                var transferBGM = this.bgm;
+                this.bgm = null;
+
+                transferObj = { "bgmObj": transferBGM }
+            }
+            else {
+                transferObj = null;
+            }
+
+            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
             break;
     }
 

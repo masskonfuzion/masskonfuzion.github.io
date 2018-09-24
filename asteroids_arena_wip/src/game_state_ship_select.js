@@ -14,6 +14,8 @@ function GameStateShipSelect() {
 
     this.activeItemIndex = -1;      // -1 means "no active selection"; but probably rely on the value of activeItem itself to determine whether or not the user is interacting with an item
     this.activeItem = null;         // Active/selected item
+
+    this.bgm = null;
 }
 
 GameStateShipSelect.prototype = Object.create(GameStateBase.prototype);
@@ -47,9 +49,19 @@ GameStateShipSelect.prototype.initialize = function(transferObj = null) {
         this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
     }
     this.highlightedItem = this.uiItems[this.highlightedItemIndex];
+
+    // Get background music player object
+    if (transferObj && transferObj.bgmObj) {
+        this.bgm = transferObj.bgmObj;
+    }
+    // Note: no else case for the bgmObj.. technically, we shouldn't even need the "if", because there should always be a bgmObj coming from the previous state (which should always be the MainMenu)
+
 };
 
 GameStateShipSelect.prototype.cleanup = function() {
+    if (this.bgm) {
+        this.bgm.stop();    // TODO move bgm out to a sound/resource manager
+    }
 };
 
 GameStateShipSelect.prototype.preRender = function(canvasContext, dt_s) {
@@ -158,6 +170,14 @@ GameStateShipSelect.prototype.handleKeyboardInput = function(evt) {
                         if (this.uiItems[this.highlightedItemIndex].actionMsg["params"].stateName == "Playing") {
                             transferObj = this.shipSelectMap[this.shipSelectIdx];
                         }
+                        else if (this.uiItems[this.highlightedItemIndex].actionMsg["params"].stateName == "MainMenu") {
+                            var transferBGM = null;
+                            if (this.bgm) {
+                                transferBGM = this.bgm;
+                                this.bgm = null;
+                            }
+                            transferObj = {"bgmObj": transferBGM};
+                        }
 
                         // if the UI item has an actionMsg associated with it, then enqueue that message
                         var cmdMsg = { "topic": "UICommand",
@@ -216,6 +236,8 @@ GameStateShipSelect.prototype.doUICommand = function(msg) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
+            
+            // Note also: in most states, the passing of bgm player object happens here. But in this state, it happens in handleKeyboardInput, because more advanced logic was needed, and that's where I could think to put it.  Not sure if what I did is the "best" way to do it; maybe revisit the logic at some point and make it better
             gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], msg.transferObj);
             break;
     }
