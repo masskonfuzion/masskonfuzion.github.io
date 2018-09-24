@@ -904,7 +904,7 @@ GameLogic.prototype.checkForGameOver = function(dt_s) {
     switch (game.settings.visible.gameMode) {
         case "Death Match":
             for (var shipID in this.gameStats) {
-                var scoreObj = this.gameStats[shipName];
+                var scoreObj = this.gameStats[shipID];
 
                 if (scoreObj.kills == game.settings.visible.gameModeSettings.deathMatch.shipKills) {
                     // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)

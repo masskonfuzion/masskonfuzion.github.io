@@ -31,7 +31,7 @@ GameStateMainMenu.prototype.initialize = function(transferObj = null) {
         this.bgm = transferObj.bgmObj;
     }
     else {
-        this.bgm = new Sound("assets/sounds/masskonfuzion-horizon.mp3");
+        this.bgm = new Sound("assets/sounds/masskonfuzion-horizon.mp3", {"loop": true});
         this.bgm.play({"volume": 0.7});     // TODO move bgm out to a sound/resource manager
                                             // TODO rig the MainMenu up to pass an already-playing bgm object to other menus (e.g. Settings), and to continue playing when returning from, e.g. Settings; but to stop Playing when giong into the GamePlaying state
     }
