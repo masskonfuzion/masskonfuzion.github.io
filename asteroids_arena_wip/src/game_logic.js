@@ -2,6 +2,9 @@ function GameScoresAndStats() {
     this.score = 0;
     this.deaths = 0;
     this.kills = 0;
+    this.asteroids_blasted_s = 0;   // small asteroids blasted
+    this.asteroids_blasted_m = 0;   // medium asteroids blasted
+    this.asteroids_blasted_l = 0;   // large asteroids blasted
 }
 
 function GameLogic() {
@@ -33,13 +36,12 @@ GameLogic.prototype.constructor = GameLogic;
 
 
 GameLogic.prototype.initialize = function(configObj = null) {
-    // Key control map is keyed on keypress event "code", e.g. "KeyW" (as opposed to "keyCode", which is a number, like 87)
-    // Based on documentation on the Mozilla Developer Network (MDN), "code" is preferred, and "keyCode" is deprecated
-    // TODO change from using "code" to using "key" (see Mozilla Developers' Network documentation on KeyboardEvents)
+    // Key control map is keyed on keypress event "code", e.g. "KeyW" (note that this is based on location, not scancode.. based on QWERTY, but e.g., "KeyW" may not be where the W key is on a non-qwerty layout)
     this.keyCtrlMap["thrust"] = { "code": "KeyW", "state": false };
     this.keyCtrlMap["turnLeft"] = { "code": "KeyA", "state": false };
     this.keyCtrlMap["turnRight"] = { "code": "KeyD", "state": false };
     this.keyCtrlMap["fireA"] = { "code": "ShiftLeft", "state": false };
+
 
     this.messageQueue = new MessageQueue();
     this.messageQueue.initialize(64);
@@ -532,12 +534,15 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
         switch (asteroidRef.size) {
             case 0:
                 this.gameStats[shipName].score += this.settings["hidden"]["pointValues"]["destroySmallAsteroid"];
+                this.gameStats[shipName].asteroids_blasted_s += 1;
                 break;
             case 1:
                 this.gameStats[shipName].score += this.settings["hidden"]["pointValues"]["destroyMediumAsteroid"];
+                this.gameStats[shipName].asteroids_blasted_m += 1;
                 break;
             case 2:
                 this.gameStats[shipName].score += this.settings["hidden"]["pointValues"]["destroyLargeAsteroid"];
+                this.gameStats[shipName].asteroids_blasted_l += 1;
                 break;
         }
 
@@ -552,8 +557,6 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                    "params": { "bulletToDisable": bulletRef }
                  };
         this.messageQueue.enqueue(cmdMsg);
-
-        // TODO for the particle explosion, add parameters to set number of particles, color, and maybe velocity, etc.
 
         numParticles = (asteroidRef.size + 1) * 8;  // The multiplier is a magic number; chosen because it created visually pleasing explosions, without too much performance hit
         cmdMsg = { "topic": "GameCommand",
@@ -907,7 +910,6 @@ GameLogic.prototype.checkForGameOver = function(dt_s) {
                 var scoreObj = this.gameStats[shipID];
 
                 if (scoreObj.kills == game.settings.visible.gameModeSettings.deathMatch.shipKills) {
-                    // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
 
                     var shipObjectID = this.gameObjs[shipID].objectID;
                     var characterName = this.characters[shipObjectID].callSign;
@@ -960,7 +962,7 @@ GameLogic.prototype.checkForGameOver = function(dt_s) {
                     var transferBGM = this.bgm; // should increment the reference count of the obj referenced by this.bgm by 1
                     this.bgm = null;    // should leave transferBGM as-is, and set my this.bgm ref to null, reducing the ref count to the actual Sound obj by 1 (at this point, the ref count should be 1
 
-                // TODO make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
+                // TODO instead of passing in this.gameStats raw, make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
                 // e.g. Most kills, best score, most deaths
                 var gameOverInfo = { "winnerInfo": winner,
                                      "settings": game.settings["visible"],

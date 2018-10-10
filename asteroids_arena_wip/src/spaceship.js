@@ -12,7 +12,7 @@ function Spaceship() {
     // Inherit GameObject properties, includinga components dict
     GameObject.call(this);
 
-    // TODO: Consider moving the addComponent calls to an initialize() function outside the ctor; i.e. try to guarantee a fully-formed object at ctor exit
+    // NVM: Consider moving the addComponent calls to an initialize() function outside the ctor; i.e. try to guarantee a fully-formed object at ctor exit
     this.addComponent("physics", new PhysicsComponentVerlet());
     this.addComponent("render", new RenderComponentSprite());
     this.addComponent("thrustPE", new ParticleEmitter());           // Particle emitter for rocket/thruster exhaust particle system
@@ -88,7 +88,6 @@ Spaceship.prototype.initialize = function(configObj) {
 
     if(configObj.hasOwnProperty("isAI") && true == configObj["isAI"]) {
         this.aiControlled = true;
-        //this.addComponent("ai", new FSM());   // TODO delete
         // Initialize an AI obj with a reference to this ship, and a reference to the gameLogic obj
         this.addComponent("ai", new SpaceshipAI(this, configObj["knowledge"]));
 
@@ -118,7 +117,7 @@ Spaceship.prototype.initialize = function(configObj) {
         // reflexState can be:  0 = not started, 1 = active, 2 = finished/time has elapsed
 
         // the decisionLogic object will store some decision-making data that it would otherwise be non-trivial to compute repeatedly (e.g. am I aligned to a vector -- is the angle between my vec and the target vec within a range?)
-        // TODO maybe rename the "aligned..." vars to "headingAligned..."
+        // NVM maybe rename the "aligned..." vars to "headingAligned..."
         this.aiConfig["decisionLogic"] = { "alignedToTargetVector": false,
                                            "alignedToEvadeVector": false,
                                            "alignedToVelCorrectVector": false,
@@ -265,10 +264,10 @@ Spaceship.prototype.draw = function(canvasContext) {
 
 
     // ----- DEBUGGING stuff
-    var myCollisionComp = this.components["collision"];
-    var topleft = vec2.clone(myCollisionComp.center);
-    vec2.set(topleft, topleft[0] - myCollisionComp.getWidth() / 2, topleft[1] - myCollisionComp.getHeight() / 2);
-    myCollisionComp.draw(canvasContext);
+    //var myCollisionComp = this.components["collision"];
+    //var topleft = vec2.clone(myCollisionComp.center);
+    //vec2.set(topleft, topleft[0] - myCollisionComp.getWidth() / 2, topleft[1] - myCollisionComp.getHeight() / 2);
+    //myCollisionComp.draw(canvasContext);
     // -----
 
 };
@@ -337,7 +336,7 @@ Spaceship.prototype.initializeAI = function(knowledgeObj) {
 };
 
 
-// TODO possibly move "start reaction delay" into an AI class
+// NVM possibly move "start reaction delay" into an AI class
 Spaceship.prototype.startReflexDelay = function() {
     this.aiConfig.aiReflex.delayInterval = Math.random() * (this.aiConfig.aiReflex.delayRange.max - this.aiConfig.aiReflex.delayRange.min) + this.aiConfig.aiReflex.delayRange.min;
     this.aiConfig.aiReflex.currTimestamp = performance.now();
@@ -401,7 +400,6 @@ function SpaceshipAI() {
 
     this.aiStateDelayNextAction = { "priority": 0, "function": this.aiBehaviorDelayNextAction };
 
-    // TODO write these functions, too
     this.aiStateAlignToReduceVelocity = { "priority": 1, "function": this.aiBehaviorAlignToReduceVelocity };
     this.aiStateThrustToReduceVelocity = { "priority": 1, "function": this.aiBehaviorThrustToReduceVelocity };
 
@@ -514,7 +512,7 @@ SpaceshipAI.prototype.enqueue = function(behavior) {
 // processing objects it's aware of, and updating vars that represent the AI's understanding
 // of the situation
 // Note as of right now (2018-05-03 08:08), the spaceship has an aiConfig object.. But.... maybe that should be in this object
-// TODO: move the Spaceship.aiConfig into the SpaceshipAI class?
+// NVM: move the Spaceship.aiConfig into the SpaceshipAI class?
 SpaceshipAI.prototype.updateDecisionLogic = function() {
     var parentShip = this.parentObj;
 
@@ -874,7 +872,7 @@ SpaceshipAI.prototype.aiBehaviorDelayNextAction = function() {
     // Note: when exiting this state, we do a simple dequeue. This state assumes it was enqueued
     // along with the state it is delaying, so dequeueing will leave the next state as active
 
-    // TODO move reflex delay (among other things) from the Spaceship class to the SpaceshipAI class
+    // NVM move reflex delay (among other things) from the Spaceship class to the SpaceshipAI class
     switch(parentShip.aiConfig["aiReflex"].reflexState) {
         case ReflexDelayStateEnum.notstarted:
             parentShip.aiConfig.aiReflex.delayInterval = Math.random() * (parentShip.aiConfig.aiReflex.delayRange.max - parentShip.aiConfig.aiReflex.delayRange.min) + parentShip.aiConfig.aiReflex.delayRange.min;

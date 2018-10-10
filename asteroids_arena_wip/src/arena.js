@@ -4,7 +4,7 @@ function Arena () {
     // In this early version, the arena will simply be a rectangle. We can use AABBs for the arena's boundaries (which will be 2 vertical and 2 horizontal)
     // If we continue into later versions, we should have a general polygonal shape; maybe use the separating axis theorem
 
-    // TODO add parameters later, to control how the arena is constructed; e.g., load from files or something
+    // TODO add parameters to control how the arena is constructed; e.g., load from files or something
     this.addComponent( "render", new RenderComponentGroup() );
     this.lineSegments = [];     // Line segment info, e.g. dir & normal
     this.boundaryColliders = [];

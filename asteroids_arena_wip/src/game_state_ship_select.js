@@ -26,6 +26,9 @@ GameStateShipSelect.prototype.initialize = function(transferObj = null) {
     this.messageQueue = new MessageQueue();
     this.messageQueue.initialize(2);
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
+
+    this.shipSelectIdx = 0;
+    this.highlightedItemIndex = 0;
     
     // NOTE: game is a global object
     var uiItemCallsignText = new uiItemText(null, "36px", "MenuFont", "white", 0.5, 0.25, "center", "middle", null);

@@ -6,6 +6,7 @@ function GameStateStatsOverlay() {
     this.activeItemIndex = 0;
     this.activeItem = null;
     this.bgm = null;
+    this.newHighScore = false;
 }
 
 GameStateStatsOverlay.prototype = Object.create(GameStateBase.prototype);
@@ -16,6 +17,9 @@ GameStateStatsOverlay.prototype.initialize = function(transferObj = null) {
     this.messageQueue = new MessageQueue();
     this.messageQueue.initialize(2);
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
+    
+    // TODO possibly modify checkForHighScore to support multiple game modes
+    this.newHighScore = this.checkForHighScore(transferObj);
 
     // create the end-of-game message display, based on the passed-in object
     this.createDisplayMessage(transferObj.scoresAndStats);
@@ -35,6 +39,42 @@ GameStateStatsOverlay.prototype.cleanup = function() {
     }
 };
 
+GameStateStatsOverlay.prototype.checkForHighScore = function(gameInfo) {
+    // We can simply load high scores (without testing for existence) because the high scores
+    // object should have been created on application started (if it wasn't already present)
+
+    // Load high scores. Note that gameInfo is an object that contains both the game stats and the game settings
+    var highScores = JSON.parse(localStorage.getItem('highScores'));
+
+    var gameMode = gameInfo.scoresAndStats.gameMode;    // e.g., "Time Attack"  // TODO maybe change gameMode to match camel-casing, for easy high score table lookups
+    var gameModeSetting = gameInfo.scoresAndStats.settings.gameModeSettings.timeAttack.timeLimit;    // e.g., "1:00" - time length of time attack. TODO don't hardcode gameModeSetting; select it based on gameMode
+    var playerCallSign = gameInfo.scoresAndStats.settings.callSign;
+    var playerStats = gameInfo.scoresAndStats.stats.ship0;
+
+
+    var relevantScoreList = highScores.timeAttack[gameModeSetting]; // A reference to a (mutable) list within the highScores object
+    for (var i = 0; i < relevantScoreList.length; i++) {
+        var highScoreItem = relevantScoreList[i];
+
+        // Note -- this logic is for the time attack mode. TODO implement high scores for Death Match mode? (maybe fastest time to achieve the kill target?)
+        if (playerStats.kills > highScoreItem.kills || 
+            playerStats.kills == highScoreItem.kills && playerStats.deaths < highScoreItem.deaths ||
+            playerStats.kills == highScoreItem.kills && playerStats.deaths == highScoreItem.deaths && playerStats.score > highScoreItem.score) {
+
+            // Insert new high score into place
+            relevantScoreList.splice(i, 0, { "callSign": playerCallSign, "kills": playerStats.kills, "deaths": playerStats.deaths, "ast_s": playerStats.asteroids_blasted_s, "ast_m": playerStats.asteroids_blasted_m, "ast_l": playerStats.asteroids_blasted_l, "score": playerStats.score });
+            // pop the very last score off the list
+            relevantScoreList.pop();
+
+            // Write new high scores out
+            localStorage.setItem('highScores', JSON.stringify(highScores));
+
+            // TODO indicate that the player achieved a new high score
+            return true;
+        }
+    }
+    return false;
+};
 
 GameStateStatsOverlay.prototype.preRender = function(canvasContext, dt_s) {
 };
@@ -54,6 +94,9 @@ GameStateStatsOverlay.prototype.createDisplayMessage = function(infoObj) {
         break;
     }
 
+
+    var rankedShipIDs = this.sortScores(infoObj.stats);
+
     var i = 0;
 
     // A couple of vars to control layout. NOTE: next time around, we'll use a layout object of some sort (maybe a JSON layout?)
@@ -64,7 +107,9 @@ GameStateStatsOverlay.prototype.createDisplayMessage = function(infoObj) {
     var shipObjectID = "";
     var characterName = "";
 
-    for (var shipID in infoObj.stats) {
+    // Iterate backwards because rankedShipIDs is sorted in ascending order; we want to print out highest to lowest scores
+    for (var loopIdx = rankedShipIDs.length - 1; loopIdx >= 0; loopIdx -= 1) {
+        var shipID = rankedShipIDs[loopIdx];
         // I could use Object.keys() and Object.values()... but I don't trust JavaScript.. O(n**2) lookup it is..
         for (var shipObjectID in infoObj.shipDict) {
             if (infoObj.shipDict[shipObjectID] == shipID) {
@@ -73,19 +118,31 @@ GameStateStatsOverlay.prototype.createDisplayMessage = function(infoObj) {
             }
         }
 
-        this.uiItems.push( new uiItemText(characterName, "20px", "MenuFont", "white", 0.3, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("Kills:", "20px", "MenuFont", "white", 0.4, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].kills.toString(), "20px", "MenuFont", "white", 0.44, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("Deaths:", "20px", "MenuFont", "white", 0.52, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].deaths.toString(), "20px", "MenuFont", "white", 0.57, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.64, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].score.toString(), "20px", "MenuFont", "white", 0.72, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(characterName, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("Kills:", "20px", "MenuFont", "white", 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].kills.toString(), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("Deaths:", "20px", "MenuFont", "white", 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].deaths.toString(), "20px", "MenuFont", "white", 0.38, yNDC + (i * ySpacing), "center", "middle", null ) );
+
+        this.uiItems.push( new uiItemText("Asteroids:", "20px", "MenuFont", "white", 0.46, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_s.toString(), "20px", "MenuFont", "white", 0.58, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_m.toString(), "20px", "MenuFont", "white", 0.66, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("L:", "20px", "MenuFont", "white", 0.70, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_l.toString(), "20px", "MenuFont", "white", 0.74, yNDC + (i * ySpacing), "center", "middle", null ) );
+
+        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.80, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].score.toString(), "20px", "MenuFont", "white", 0.88, yNDC + (i * ySpacing), "center", "middle", null ) );
         i += 1;
+    }
+
+    if (this.newHighScore) {
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["new_high_score"].imgObj, 0.85, 0.15, "center", "middle", null ) );
     }
 };
 
 GameStateStatsOverlay.prototype.render = function(canvasContext, dt_s) {
-    // TODO maybe this game stats overlay state should have its own canvas context/object
     canvasContext.save();
     canvasContext.setTransform(1,0,0,1,0,0);    // Reset transformation (similar to OpenGL loadIdentity() for matrices)
 
@@ -170,9 +227,58 @@ GameStateStatsOverlay.prototype.doUICommand = function(msg) {
             // NOTE: This popState command calls the gameStateManager's resumeState(). There is a pushState() and popState() - maybe consolidate pauseState and resumeState into pushState and popState?
 
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            //gameStateMgr.resumeState();   // This is what we would call in an actual overlay. //TODO change the name of this state to GameStateGameOver or something like that?
+            //gameStateMgr.resumeState();   // This is what we would call in an actual overlay.
             gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName]);
             break;
     }
 
+};
+
+
+// Return a list of shipIDs, to be used to display scores in sorted order
+GameStateStatsOverlay.prototype.sortScores = function(scoreObj) {
+    var rankedShipIDs = Object.getOwnPropertyNames(scoreObj);
+
+    // first pass: sort shipIDs, ascending, based on the # of kills achieved by that ship
+    for (var fill_slot = rankedShipIDs.length - 1; fill_slot > 0; fill_slot -= 1) {
+        var pos_of_max = 0;
+        for (var loc  = 1; loc <= fill_slot; loc += 1) {
+            if (scoreObj[rankedShipIDs[loc]].kills > scoreObj[rankedShipIDs[pos_of_max]].kills) {
+                pos_of_max = loc;
+            }
+        }
+
+        var temp = rankedShipIDs[fill_slot];
+        rankedShipIDs[fill_slot] = rankedShipIDs[pos_of_max];
+        rankedShipIDs[pos_of_max] = temp;
+    }
+
+    // check for any ties by kills (We assume at least 2 ships)
+    ////for (var i = 0; i < rankedShipIDs.length - 1; i++) {
+    ////    for (var j = 1; j < rankedShipIDs.length; j++) {
+    for (var i = rankedShipIDs.length - 1; i > 1; i--) {
+        for (var j = (rankedShipIDs.length - 1) - 1; j > 0; j--) {
+            // if ship j has the same # of kills as ship i
+            if (scoreObj[rankedShipIDs[j]].kills == scoreObj[rankedShipIDs[j]].kills) {
+                // Break tie on deaths
+                if (scoreObj[rankedShipIDs[j]].deaths < scoreObj[rankedShipIDs[i]].deaths) {
+                    // If ship j has fewer deaths than ship i, then swap j's rank with i (move j up in rank)
+                    var temp = rankedShipIDs[i];
+                    rankedShipIDs[i] = rankedShipIDs[j];
+                    rankedShipIDs[j] = temp;
+                }
+                else if (scoreObj[rankedShipIDs[j]].deaths == scoreObj[rankedShipIDs[i]].deaths) {
+                    // If ship j has the same # of deaths as i, break ties on score
+                    if (scoreObj[rankedShipIDs[j]].score > scoreObj[rankedShipIDs[i]].score) {
+                        // If ship j has a higher score than ship i (incorporates asteroids blasted), then swap j's rank with i (move j up in rank)
+                        var temp = rankedShipIDs[i];
+                        rankedShipIDs[i] = rankedShipIDs[j];
+                        rankedShipIDs[j] = temp;
+                    }
+                }
+            }
+        }
+    }
+
+    return rankedShipIDs;
 };

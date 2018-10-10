@@ -20,8 +20,6 @@ function QueueBase () {
     this._tail = 0;
     this._head = 0;
     this._empty = true;
-
-    // TODO continue with game -- make a message queue/command handler. Then change the camera responder to enqueue a message for the command managers to "offer up" to its listener/handlers
 }
 
 
@@ -56,7 +54,6 @@ QueueBase.prototype.enqueue = function(obj) {
         }
     }
 
-    // TODO - make sure we're copying, instead of adding object references? (I think that's what we want?)
     this._queue[this._tail] = obj;
     //console.log("Enqueued an object at index " + this._tail + ". (head= " + this._head + ").");
 };

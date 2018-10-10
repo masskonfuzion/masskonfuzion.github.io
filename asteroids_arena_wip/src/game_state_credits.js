@@ -46,6 +46,7 @@ GameStateCredits.prototype.render = function(canvasContext, dt_s) {
     canvasContext.setTransform(1,0,0,1,400,150);    // Reset transformation (similar to OpenGL loadIdentity() for matrices) TODO maybe don't hardcode image coordinates
     
     // Dab on 'em
+    // TODO 2018-10-09: Now that there's a uiItemImage type, maybe we can make the dab unicorn a UI Item?
     var imgObj = game.imgMgr.imageMap["dab"].imgObj;    // TODO I hate the syntax of getting an img object. Change it/wrap it in a function call. Do something. Fix it!!
     canvasContext.drawImage(imgObj, -imgObj.width / 2, -imgObj.height / 2);
 

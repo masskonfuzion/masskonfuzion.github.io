@@ -1,11 +1,16 @@
 function GameStatePlaying() {
     this.gameLogic = null;
+    this.imgObjs = {};
 }
 
 GameStatePlaying.prototype = Object.create(GameStateBase.prototype);
 GameStatePlaying.prototype.constructor = GameStatePlaying;
 
 GameStatePlaying.prototype.initialize = function(transferObj = null) {
+    this.imgObjs["kills_icon"] = game.imgMgr.imageMap["kills_icon"].imgObj; // TODO I hate the syntax of getting an img object. Change it/wrap it in a function call. Do something. Fix it!!
+    this.imgObjs["deaths_icon"] = game.imgMgr.imageMap["deaths_icon"].imgObj; // TODO I hate the syntax of getting an img object. Change it/wrap it in a function call. Do something. Fix it!!
+    this.imgObjs["asteroids_icon"] = game.imgMgr.imageMap["asteroids_icon"].imgObj; // TODO I hate the syntax of getting an img object. Change it/wrap it in a function call. Do something. Fix it!!
+
     this.gameLogic = new GameLogic();
     this.gameLogic.initialize(transferObj);
 
@@ -48,11 +53,11 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
 
         characterNamePosNDC = [0.15, textPosY];
 
-        deathsLabelPosNDC = [0.32, textPosY];      // NDCs go from 0 to 1 on each axis
-        deathsPosNDC = [0.40, textPosY];      // NDCs go from 0 to 1 on each axis
+        killsLabelPosNDC = [0.32, textPosY];      // NDCs go from 0 to 1 on each axis
+        killsPosNDC = [0.40, textPosY];      // NDCs go from 0 to 1 on each axis
 
-        killsLabelPosNDC = [0.52, textPosY];      // NDCs go from 0 to 1 on each axis
-        killsPosNDC = [0.60, textPosY];      // NDCs go from 0 to 1 on each axis
+        deathsLabelPosNDC = [0.52, textPosY];      // NDCs go from 0 to 1 on each axis
+        deathsPosNDC = [0.60, textPosY];      // NDCs go from 0 to 1 on each axis
 
         scoreLabelPosNDC = [0.72, textPosY];      // NDCs go from 0 to 1 on each axis
         scorePosNDC = [0.80, textPosY];      // NDCs go from 0 to 1 on each axis
@@ -65,11 +70,11 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
         // TODO wrap NDC calculation in function
         canvasContext.fillText(characterName, characterNamePosNDC[0] * canvasContext.canvas.width, characterNamePosNDC[1] * canvasContext.canvas.height);
 
-        canvasContext.fillText("Deaths", deathsLabelPosNDC[0] * canvasContext.canvas.width, deathsLabelPosNDC[1] * canvasContext.canvas.height);
-        canvasContext.fillText(this.gameLogic.gameStats[shipID].deaths, deathsPosNDC[0] * canvasContext.canvas.width, deathsPosNDC[1] * canvasContext.canvas.height);
-
-        canvasContext.fillText("Kills", killsLabelPosNDC[0] * canvasContext.canvas.width, killsLabelPosNDC[1] * canvasContext.canvas.height);
+        canvasContext.drawImage(this.imgObjs.kills_icon, (killsLabelPosNDC[0] * canvasContext.canvas.width) - (this.imgObjs.kills_icon.width/2), (killsLabelPosNDC[1] * canvasContext.canvas.height) - (this.imgObjs.kills_icon.height/2));
         canvasContext.fillText(this.gameLogic.gameStats[shipID].kills, killsPosNDC[0] * canvasContext.canvas.width, killsPosNDC[1] * canvasContext.canvas.height);
+
+        canvasContext.drawImage(this.imgObjs.deaths_icon, (deathsLabelPosNDC[0] * canvasContext.canvas.width) - (this.imgObjs.deaths_icon.width/2), (deathsLabelPosNDC[1] * canvasContext.canvas.height) - (this.imgObjs.deaths_icon.height/2));
+        canvasContext.fillText(this.gameLogic.gameStats[shipID].deaths, deathsPosNDC[0] * canvasContext.canvas.width, deathsPosNDC[1] * canvasContext.canvas.height);
 
         canvasContext.fillText("Score", scoreLabelPosNDC[0] * canvasContext.canvas.width, scoreLabelPosNDC[1] * canvasContext.canvas.height);
         canvasContext.fillText(this.gameLogic.gameStats[shipID].score, scorePosNDC[0] * canvasContext.canvas.width, scorePosNDC[1] * canvasContext.canvas.height);

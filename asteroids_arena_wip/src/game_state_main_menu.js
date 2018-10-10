@@ -1,5 +1,6 @@
 function GameStateMainMenu() {
-    // TODO: Menu should be arranged in "levels" or some such. Each level is a tree node. Each level can have 1 or more "pages" of configurable options. uiItems on pages can be mapped to a config item in a "config object" (a dict/associative array or whatever). The menu can have "accepted inputs" for navigation (keyboard keys/mouse/touch controls for navigation, confirming/canceling selections, etc). The uiItems can be configured with function callbacks or something, so that when the user enters various input, the menu takes the appropriate action. The menu should have a messageQueue, like the gameLogic object in the gameplaying state, for accepting input and such. Do it
+    // NVM: Menu should be arranged in "levels" or some such. Each level is a tree node. Each level can have 1 or more "pages" of configurable options. uiItems on pages can be mapped to a config item in a "config object" (a dict/associative array or whatever). The menu can have "accepted inputs" for navigation (keyboard keys/mouse/touch controls for navigation, confirming/canceling selections, etc). The uiItems can be configured with function callbacks or something, so that when the user enters various input, the menu takes the appropriate action. The menu should have a messageQueue, like the gameLogic object in the gameplaying state, for accepting input and such. Do it
+    // ^^ For what it's worth... UI items should be dictated by a "layout" of some sort
     GameStateBase.call(this);
 
     this.uiItems = [];
@@ -20,7 +21,8 @@ GameStateMainMenu.prototype.initialize = function(transferObj = null) {
     this.uiItems.push( new uiItemText("Play Game", "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "ShipSelect", "sendBGM": true}}) );  // stateName is the name of the state obj in the global scope
     this.uiItems.push( new uiItemText("Settings", "32px", "MenuFont", "white", 0.5, 0.55, "center", "middle", {"command": "changeState", "params": {"stateName": "Settings", "sendBGM": true}}) );
     this.uiItems.push( new uiItemText("How to Play", "32px", "MenuFont", "white", 0.5, 0.65, "center", "middle", {"command": "changeState", "params": {"stateName": "HowToPlay", "sendBGM": true}}) );
-    this.uiItems.push( new uiItemText("Credits", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "Credits", "sendBGM": false}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM
+    this.uiItems.push( new uiItemText("High Scores", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "HighScores", "sendBGM": false}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM (like a cool remix of "How Great Thou Art")
+    this.uiItems.push( new uiItemText("Credits", "32px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "Credits", "sendBGM": false}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM
 
     this.activeItemIndex = 0;
     this.activeItem = this.uiItems[this.activeItemIndex];
@@ -33,7 +35,6 @@ GameStateMainMenu.prototype.initialize = function(transferObj = null) {
     else {
         this.bgm = new Sound("assets/sounds/masskonfuzion-horizon.mp3", {"loop": true});
         this.bgm.play({"volume": 0.7});     // TODO move bgm out to a sound/resource manager
-                                            // TODO rig the MainMenu up to pass an already-playing bgm object to other menus (e.g. Settings), and to continue playing when returning from, e.g. Settings; but to stop Playing when giong into the GamePlaying state
     }
 };
 
@@ -60,7 +61,6 @@ GameStateMainMenu.prototype.render = function(canvasContext, dt_s) {
     }
 
     // Highlight active item
-    // TODO call getWidth() on active item; round up to nearest int (e.g. because measureText() returns float); multiply by 1.5. Make a rect
     var hlItem = this.uiItems[this.activeItemIndex];
     var hlWidth = Math.ceil( hlItem.getWidth(canvasContext) * 1.5 );
     var hlHeight = Math.ceil( hlItem.getHeight(canvasContext) * 1.5);

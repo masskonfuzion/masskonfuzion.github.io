@@ -70,7 +70,6 @@ uiItemSpinner.prototype.getValueIndexFromBoundValue = function() {
 };
 
 
-// TODO add user interaction -- respond to keyboard input (and eventually mouse? if I feel like it?)
 uiItemSpinner.prototype.handleUserInput = function(params) {
     switch(params["event"]) {
         case "ActiveUIItem_HandleEvent_KeyDown_ArrowRight":

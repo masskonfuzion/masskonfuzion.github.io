@@ -229,7 +229,7 @@ CollisionManager.prototype.isColliding_Circle_Polygon = function(circle, poly) {
         }
 
         // Compute the locations, along the given normal, of the min and max locations of points in objB
-        // TODO because there are no vertices in a Circle (or Sphere? -- I don't know.. Use whatever name is appropriate, once you actually crete the collider type) collider, project the center down to the normal's line/plane, and then compute the extreme points of the circle from there
+        // TODO because there are no vertices in a Circle (or Sphere? -- I don't know.. Use whatever name is appropriate, once you actually create the collider type) collider, project the center down to the normal's line/plane, and then compute the extreme points of the circle from there
         for (var point of objB.tpoints) {
             var t = vec2.dot(point, normal);
             if (t > tMaxB) {

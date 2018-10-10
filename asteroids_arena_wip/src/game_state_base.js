@@ -20,19 +20,6 @@ GameStateBase.prototype.cleanup = function() {
 };
 
 
-//TODO actually, states won't be responsible for pause/resume.  We need a game state manager. We can either (A) specify game states and transitions in some kind of data structure, or (B) hand-code transitions as part of the state objects themselves.
-////TODO Consider changing "pause" to "PushState" or something; doesn't HAVE to be 'pause'
-//GameStateBase.prototype.pause = function() {
-//    throw new Error("Function must be implemented by subclass");
-//};
-//
-//
-////TODO Consider changing "resume" to "PopState" or something; doesn't HAVE to be 'resume'
-//GameStateBase.prototype.resume = function() {
-//    throw new Error("Function must be implemented by subclass");
-//};
-
-
 // Do things before rendering the scene (e.g.:
 // update physics simulation/collision
 // processes events/messages, etc.

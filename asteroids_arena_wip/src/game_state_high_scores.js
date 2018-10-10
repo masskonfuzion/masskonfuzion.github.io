@@ -1,4 +1,5 @@
-function GameStateSettings() {
+function GameStateHighScores() {
+    // TODO! Make this menu/game state actually the high scores menu. It is copy/paste from GameStateSettings
     GameStateBase.call(this);
     this.messageQueue = null;
 
@@ -11,74 +12,101 @@ function GameStateSettings() {
     this.activeItemIndex = -1;      // -1 means "no active selection"; but probably rely on the value of activeItem itself to determine whether or not the user is interacting with an item
     this.activeItem = null;         // Active/selected item
 
+    this.page = 0;  // "Page" number, for looking at different "pages" of high scores data
+    this.highScores = {};
+    this.timeLimitPageLabels = [];  // List of "page labels" -- the different time lengths (in timeAttack) that have 
+    // TODO maybe also keep high scores for fastest times to reach kill counts, in DeathMatch mode
+
     this.bgm = null;
 }
 
-GameStateSettings.prototype = Object.create(GameStateBase.prototype);
-GameStateSettings.prototype.constructor = GameStateSettings;
+GameStateHighScores.prototype = Object.create(GameStateBase.prototype);
+GameStateHighScores.prototype.constructor = GameStateHighScores;
 
-GameStateSettings.prototype.initialize = function(transferObj = null) {
+GameStateHighScores.prototype.initialize = function(transferObj = null) {
     this.messageQueue = new MessageQueue();
     this.messageQueue.initialize(2);
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
 
-    // TODO Implement other UI items (i.e., pictures)
-    this.uiItems.push( new uiItemText("General", "32px", "MenuFont", "white", 0.05, 0.05, "left", "middle") );
+    this.loadHighScores();    //TODO uncomment once the loadhighScores function is written
 
-    // TODO move game mode setting into a "Mode Select" screen that is presented when the user selects to Play Game
-    this.uiItems.push( new uiItemText("Game Mode", "24px", "MenuFont", "white", 0.05, 0.1, "left", "middle") );
-
-    var uiItemGameModeSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.1, "left", "middle");
-    uiItemGameModeSetting.setSelectableValues( ["Death Match", "Time Attack" ] );
-    uiItemGameModeSetting.setBoundObj(game.settings.visible);
-    uiItemGameModeSetting.setBoundKey("gameMode");
-    uiItemGameModeSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
-    this.uiItems.push( uiItemGameModeSetting );
+    this.refreshPage();
 
 
-    this.uiItems.push( new uiItemText("Difficulty", "24px", "MenuFont", "white", 0.55, 0.1, "left", "middle") );
-    this.uiItems.push( new uiItemText("( TODO )", "24px", "MenuFont", "white", 0.75, 0.1, "left", "middle") );
-    this.uiItems.push( new uiItemText("DeathMatch Options", "32px", "MenuFont", "white", 0.05, 0.2, "left", "middle") );
+    // Get background music player object
+    if (transferObj && transferObj.bgmObj) {
+        this.bgm = transferObj.bgmObj;
+    }
+    // Note: no else case for the bgmObj.. technically, we shouldn't even need the "if", because there should always be a bgmObj coming from the previous state (which should always be the MainMenu)
+};
 
-    this.uiItems.push( new uiItemText("Kills Count", "24px", "MenuFont", "white", 0.05, 0.25, "left", "middle") );
+GameStateHighScores.prototype.loadHighScores = function() {
+    // TODO move the initialization of high scores to the "main" menu -- the high scores object should be created without requiring the user to visit the high scores menu
+    var highScoresObj = localStorage.getItem('highScores');
 
-    var uiItemKillsCountSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.25, "left", "middle");
-    uiItemKillsCountSetting.setSelectableValues( [5,10,15,20,25,50,75,100] );
-    // ^^ because I didn't feel like writing a function to initialize the selectable values by using a range (like start=5, end=50, step=1)
-    // selectable values must be set before synchronizing bound value to selectable values list
-    // This list could also come from "invisible" settings... but then again... maybe not; because end users could hack that
-    uiItemKillsCountSetting.setBoundObj(game.settings.visible.gameModeSettings.deathMatch);
-    uiItemKillsCountSetting.setBoundKey("shipKills");
-    uiItemKillsCountSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
-    this.uiItems.push( uiItemKillsCountSetting );
+    if (highScoresObj) {
+        this.highScores = JSON.parse(highScoresObj);
+    }
+    else {
+        // timeLimitPageLabels for this high scores obj is taken (hard-coded) from the settings menu. It is hard-coded. TODO maybe specify the time limits somewhere centralized/global
+        var timeLimitPageLabels = [ "1:00", "2:00", "3:00", "5:00", "7:00", "10:00", "15:00", "20:00", "25:00", "30:00" ];
+        this.highScores = { "timeAttack": {},
+                          };
+        for (var timeLimit of timeLimitPageLabels) {
+            this.highScores["timeAttack"][timeLimit] = this.createNewEmptyScoreObj();
+        }
+        // Note that there are no high scores for deathMatch -- maybe we can track highest score reached (based on kills/asteroids blasted), but meh..
+    }
+    this.timeLimitPageLabels = Object.getOwnPropertyNames(this.highScores["timeAttack"]);
+};
 
-    this.uiItems.push( new uiItemText("Timer Attack Options", "32px", "MenuFont", "white", 0.05, 0.35, "left", "middle") );
-    this.uiItems.push( new uiItemText("Time Limit", "24px", "MenuFont", "white", 0.05, 0.40, "left", "middle") );
-    
-    var uiItemTimeLimitSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.40, "left", "middle");
-    uiItemTimeLimitSetting.setSelectableValues( [ "1:00", "2:00", "3:00", "5:00", "7:00", "10:00", "15:00", "20:00", "25:00", "30:00" ] );
-    uiItemTimeLimitSetting.setBoundObj(game.settings.visible.gameModeSettings.timeAttack);
-    uiItemTimeLimitSetting.setBoundKey("timeLimit");
-    uiItemTimeLimitSetting.getValueIndexFromBoundValue();  // We have to call this to get the spinner to "know" which of its selectableValues is selected
-    this.uiItems.push( uiItemTimeLimitSetting );
+GameStateHighScores.prototype.createNewEmptyScoreObj = function() {
+    var retObj = [];
 
-    this.uiItems.push( new uiItemText("Call Sign", "32px", "MenuFont", "white", 0.05, 0.60, "left", "middle") );
-    var uiItemCallsignInput = new uiItemTextInput("", "32px", "MenuFont", "white", 0.25, 0.60, "left", "middle");
-    uiItemCallsignInput.setBoundObj(game.settings.visible);
-    uiItemCallsignInput.setBoundKey("callSign");
-    uiItemCallsignInput.getTextFromBoundValue();
-    this.uiItems.push( uiItemCallsignInput );
+    // Initialize top 5 scores at each level
+    for (var i = 0; i < 5; i++) {
+        retObj.push( { "callSign": "Incognito", "kills": 0, "deaths": 0, "ast_s": 0, "ast_m": 0, "ast_l": 0, "score": 0 } );
+    }
+
+    return retObj;
+};
 
 
-    this.uiItems.push( new uiItemText("Controls", "32px", "MenuFont", "white", 0.55, 0.2, "left", "middle") );
-    this.uiItems.push( new uiItemText("Thrust", "24px", "MenuFont", "white", 0.55, 0.25, "left", "middle") );
-    this.uiItems.push( new uiItemText("W", "24px", "MenuFont", "white", 0.75, 0.25, "left", "middle") );
-    this.uiItems.push( new uiItemText("Turn Left", "24px", "MenuFont", "white", 0.55, 0.3, "left", "middle") );
-    this.uiItems.push( new uiItemText("A", "24px", "MenuFont", "white", 0.75, 0.3, "left", "middle") );
-    this.uiItems.push( new uiItemText("Turn Right", "24px", "MenuFont", "white", 0.55, 0.35, "left", "middle") );
-    this.uiItems.push( new uiItemText("D", "24px", "MenuFont", "white", 0.75, 0.35, "left", "middle") );
-    this.uiItems.push( new uiItemText("Fire", "24px", "MenuFont", "white", 0.55, 0.4, "left", "middle") );
-    this.uiItems.push( new uiItemText("L Shift", "24px", "MenuFont", "white", 0.75, 0.4, "left", "middle") );
+GameStateHighScores.prototype.refreshPage = function() {
+    this.uiItems = [];  // clear the uiItems list so we can build it anew
+
+    // TODO implement all pages of high scores (for timeLimit in this.highScores.timeAttack)
+    var timeLimit = this.timeLimitPageLabels[this.page];
+    // Display the time limit
+    this.uiItems.push( new uiItemText(timeLimit, "32px", "MenuFont", "white", 0.05, 0.05, "left", "middle") );
+
+    var yNDC = 0.25;
+    var ySpacing = 0.1;
+
+    // TODO implement an Image UI Type
+    // scores
+    for (var i = 0; i < this.highScores["timeAttack"][timeLimit].length; i++) {
+        var scoreItem = this.highScores["timeAttack"][timeLimit][i];
+
+        var callSign = scoreItem.callSign;
+        this.uiItems.push( new uiItemText(callSign, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kills_icon"].imgObj, 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.kills.toString(), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["deaths_icon"].imgObj, 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.deaths.toString(), "20px", "MenuFont", "white", 0.38, yNDC + (i * ySpacing), "center", "middle", null ) );
+
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["asteroids_icon"].imgObj, 0.48, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.ast_s.toString(), "20px", "MenuFont", "white", 0.58, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.ast_m.toString(), "20px", "MenuFont", "white", 0.66, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("L:", "20px", "MenuFont", "white", 0.70, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.ast_l.toString(), "20px", "MenuFont", "white", 0.74, yNDC + (i * ySpacing), "center", "middle", null ) );
+
+        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.80, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.score.toString(), "20px", "MenuFont", "white", 0.88, yNDC + (i * ySpacing), "center", "middle", null ) );
+    }
+
 
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 
@@ -88,28 +116,22 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
         this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
     }
     this.highlightedItem = this.uiItems[this.highlightedItemIndex];
-
-    // Get background music player object
-    if (transferObj && transferObj.bgmObj) {
-        this.bgm = transferObj.bgmObj;
-    }
-    // Note: no else case for the bgmObj.. technically, we shouldn't even need the "if", because there should always be a bgmObj coming from the previous state (which should always be the MainMenu)
 };
 
-GameStateSettings.prototype.cleanup = function() {
+
+GameStateHighScores.prototype.cleanup = function() {
     this.uiItems = [];
 
     // Save settings to localStorage. We have to JSON.stringify() the object, because localStorage wants key/value pairs of strings (even numbers get saved as strings)
     // TODO maybe the localStorage saving shouldn't happen in cleanup(), but in the handler for the return action
-    // TODO - save callsign on exit frmo settings menu
-    localStorage.setItem('settings', JSON.stringify(game.settings));
+    localStorage.setItem('highScores', JSON.stringify(this.highScores));
 
     if (this.bgm) {
         this.bgm.stop();    // TODO move bgm out to a sound/resource manager
     }
 };
 
-GameStateSettings.prototype.render = function(canvasContext, dt_s) {
+GameStateHighScores.prototype.render = function(canvasContext, dt_s) {
     canvasContext.save();
     canvasContext.setTransform(1,0,0,1,0,0);    // Reset transformation (similar to OpenGL loadIdentity() for matrices)
 
@@ -143,11 +165,11 @@ GameStateSettings.prototype.render = function(canvasContext, dt_s) {
     canvasContext.restore();
 };
 
-GameStateSettings.prototype.postRender = function(canvasContext, dt_s) {
+GameStateHighScores.prototype.postRender = function(canvasContext, dt_s) {
     this.processMessages(dt_s);
 };
 
-GameStateSettings.prototype.handleKeyboardInput = function(evt) {
+GameStateHighScores.prototype.handleKeyboardInput = function(evt) {
     if (evt.type == "keydown") {
         // haven't decided what (if anything) to do on keydown
     } else if (evt.type == "keyup") {
@@ -177,22 +199,39 @@ GameStateSettings.prototype.handleKeyboardInput = function(evt) {
                 break;
             // TODO - correct KeyDown to KeyUp, everywhere
             case "ArrowLeft":
-                var cmdMsg = { "topic": "UICommand",
-                               "targetObj": this,
-                               "command": "sendUserInputToActiveItem",
-                               "params": { "event": "ActiveUIItem_HandleEvent_KeyDown_ArrowLeft" }
-                             };
-                this.messageQueue.enqueue(cmdMsg);
+                // If there is an active/selected UI item, send input to it
+                if (this.activeItem) {
+                    var cmdMsg = { "topic": "UICommand",
+                                   "targetObj": this,
+                                   "command": "sendUserInputToActiveItem",
+                                   "params": { "event": "ActiveUIItem_HandleEvent_KeyDown_ArrowLeft" }
+                                 };
+                    this.messageQueue.enqueue(cmdMsg);
+                }
+                // Otherwise, decrease the "page number" of displayed high score data
+                else {
+                    this.page = (this.page + this.timeLimitPageLabels.length - 1) % this.timeLimitPageLabels.length;
+                    this.refreshPage();
+                }
                 break;
             case "ArrowRight":
                 // NOTE: "ActiveUIItem_HandleEvent_KeyDown_ArrowRight and etc. will be used to trigger function calls in the UI Items.  This object (i.e., the menu/form will need to call the functions on the form's active items.
                 // Side note: I don't like this design. It forces the menu/UI itself to call the functions that make the UI items handle their own internal data. That's ugly. If I ever have to write another UI, I'd have menus be an object in & of themselves. The menu objects would store the menu layout, and also, they'd have the functions necessary to handle user input and pass whatever needs to be passed into UI items.
-                var cmdMsg = { "topic": "UICommand",
-                               "targetObj": this,
-                               "command": "sendUserInputToActiveItem",
-                               "params": { "event": "ActiveUIItem_HandleEvent_KeyDown_ArrowRight" }
-                             };
-                this.messageQueue.enqueue(cmdMsg);
+
+                // If there is an active/selected UI item, send input to it
+                if (this.activeItem) {
+                    var cmdMsg = { "topic": "UICommand",
+                                   "targetObj": this,
+                                   "command": "sendUserInputToActiveItem",
+                                   "params": { "event": "ActiveUIItem_HandleEvent_KeyDown_ArrowRight" }
+                                 };
+                    this.messageQueue.enqueue(cmdMsg);
+                }
+                // Otherwise, increase the "page number" of displayed high score data
+                else {
+                    this.page = (this.page + 1) % this.timeLimitPageLabels.length;
+                    this.refreshPage();
+                }
                 break;
             case "Enter":
                 // Enqueue an action to be handled in the postRender step. We want all actions (e.g. state changes, etc.) to be handled in postRender, so that when the mainloop cycles back to the beginning, the first thing that happens is the preRender step in the new state (if the state changed)
@@ -243,7 +282,7 @@ GameStateSettings.prototype.handleKeyboardInput = function(evt) {
 };
 
 
-GameStateSettings.prototype.processMessages = function(dt_s) {
+GameStateHighScores.prototype.processMessages = function(dt_s) {
     // dt_s is not used specifically by processMessages, but is passed in in case functions called by processMessages need it
     //console.log('MessageQueue has ' + this.messageQueue.numItems() + ' items in it');
 
@@ -264,7 +303,7 @@ GameStateSettings.prototype.processMessages = function(dt_s) {
 
 
 // Take action on a message with topic, "UICommand"
-GameStateSettings.prototype.doUICommand = function(msg) {
+GameStateHighScores.prototype.doUICommand = function(msg) {
     // UICommand messages contain a command, a targetObj (i.e. who's going to execute the command), and a params list
     // The command is most likely to call a function. This is not quite a function callback, because we are not storing a pre-determined function ptr
     //console.log("In doUICommand(), with msg = ", msg);
@@ -295,6 +334,6 @@ GameStateSettings.prototype.doUICommand = function(msg) {
 // Send a user input event to the active/selected item in this menu.
 // NOTE: Any GameStates that want to implement a menu/UI must implement this function.
 // Menus/UIs are not structured as objects
-GameStateSettings.prototype.sendUserInputToActiveItem = function(params) {
+GameStateHighScores.prototype.sendUserInputToActiveItem = function(params) {
     this.activeItem.handleUserInput(params);
 };

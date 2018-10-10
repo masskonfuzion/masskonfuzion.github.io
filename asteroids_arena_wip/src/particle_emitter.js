@@ -10,7 +10,7 @@ ParticleEmitters have to issue requests, of the Particle System, to add particle
 NOTE: This class can be a game object component -- e.g., a spaceship will have the particle emitter. Yeah. I just decided that right now. You, reading this, will have no idea when "now" is. But I've been working on this game for over a week. So, yeah. :-D.
 ParticleEmitter should be thought of as a Particle System Controller. A spaceship can use the ParticleEmitter differently, depending on which gun/launcher it has equipped.
 
-TODO decide: Should the ParticleEmitter actually be a ParticleManager, i.e., also responsible for destroying Particles?
+NVM decide: Should the ParticleEmitter actually be a ParticleManager, i.e., also responsible for destroying Particles?
 **/
 
 function ParticleEmitter(myID = "") {

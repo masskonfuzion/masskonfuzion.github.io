@@ -33,9 +33,9 @@ Particle.prototype.draw = function(canvasContext) {
     canvasContext.restore();
 
     // TODO delete: DEBUGGING
-    if (this.components.hasOwnProperty("collision")) {
-        this.components["collision"].draw(canvasContext);
-    }
+    //if (this.components.hasOwnProperty("collision")) {
+    //    this.components["collision"].draw(canvasContext);
+    //}
 };
 
 Particle.prototype.setAutoExpire = function(tf) {

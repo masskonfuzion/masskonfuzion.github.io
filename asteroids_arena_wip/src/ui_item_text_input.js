@@ -1,5 +1,3 @@
-// TODO make sure these codes work for, e.g., foreign keyboard layouts. In JS, the 'code' might be, e.g. "KeyQ" for q in QWERTY, but it might be ` in Dvorak (or something like that). Combine 'code' with 'key' to get the actual key pressed
-
 function uiItemTextInput(text, size, fontFamily, color, ndcX, ndcY, align, baseline, actionMsg) {
     this.size = size;               // Can be whatever CSS will accept  - must be defined somewhere in the scope of the game
     this.font = fontFamily;         // this should be the str as called by the canvasContext, e.g. "18px FontName"
@@ -61,6 +59,7 @@ uiItemTextInput.prototype.handleUserInput = function(params) {
                     }
                 break;
 
+                // TODO use a smarter method (ascii table?) to determine which letters/characters to add to a username
                 case "a": case "b": case "c": case "d": case "e": case "f": case "g":
                 case "h": case "i": case "j": case "k": case "l": case "m": case "n": case "o": case "p":
                 case "q": case "r": case "s": case "t": case "u": case "v":
