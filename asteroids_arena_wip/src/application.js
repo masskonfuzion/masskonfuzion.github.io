@@ -30,6 +30,7 @@ GameApplication.prototype.initialize = function() {
     this.timer = new Timer();
 
     this.loadSettings();
+    this.initializeHighScores();
 }
 
 
@@ -58,3 +59,33 @@ GameApplication.prototype.loadSettings = function() {
 };
 
 
+// Initialize high scores is none are stored
+// (Note: that's all we do; we don't actually load the scores if they exist. There's no need for that at this point)
+GameApplication.prototype.initializeHighScores = function() {
+    var highScoresFromLocalStorage = localStorage.getItem('highScores');
+
+    var highScores = {};
+    if (!highScoresFromLocalStorage) {
+        // timeLimitPageLabels for this high scores obj is taken (hard-coded) from the settings menu. It is hard-coded. TODO maybe specify the time limits somewhere centralized/global
+        var timeLimitPageLabels = [ "1:00", "2:00", "3:00", "5:00", "7:00", "10:00", "15:00", "20:00", "25:00", "30:00" ];
+        highScores = { "timeAttack": {},
+                     };
+        for (var timeLimit of timeLimitPageLabels) {
+            highScores["timeAttack"][timeLimit] = this.createNewEmptyScoreObj();
+        }
+        // Note that there are no high scores for deathMatch -- maybe we can track highest score reached (based on kills/asteroids blasted), but meh..
+
+        localStorage.setItem('highScores', JSON.stringify(highScores));
+    }
+};
+
+GameApplication.prototype.createNewEmptyScoreObj = function() {
+    var retObj = [];
+
+    // Initialize top 5 scores at each level
+    for (var i = 0; i < 5; i++) {
+        retObj.push( { "callSign": "Incognito", "kills": 0, "deaths": 0, "ast_s": 0, "ast_m": 0, "ast_l": 0, "score": 0 } );
+    }
+
+    return retObj;
+};

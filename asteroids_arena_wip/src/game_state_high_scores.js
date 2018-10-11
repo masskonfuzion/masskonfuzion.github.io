@@ -28,7 +28,7 @@ GameStateHighScores.prototype.initialize = function(transferObj = null) {
     this.messageQueue.initialize(2);
     this.messageQueue.registerListener('UICommand', this, this.doUICommand);
 
-    this.loadHighScores();    //TODO uncomment once the loadhighScores function is written
+    this.loadHighScores();
 
     this.refreshPage();
 
@@ -41,36 +41,16 @@ GameStateHighScores.prototype.initialize = function(transferObj = null) {
 };
 
 GameStateHighScores.prototype.loadHighScores = function() {
-    // TODO move the initialization of high scores to the "main" menu -- the high scores object should be created without requiring the user to visit the high scores menu
     var highScoresObj = localStorage.getItem('highScores');
 
     if (highScoresObj) {
         this.highScores = JSON.parse(highScoresObj);
     }
     else {
-        // timeLimitPageLabels for this high scores obj is taken (hard-coded) from the settings menu. It is hard-coded. TODO maybe specify the time limits somewhere centralized/global
-        var timeLimitPageLabels = [ "1:00", "2:00", "3:00", "5:00", "7:00", "10:00", "15:00", "20:00", "25:00", "30:00" ];
-        this.highScores = { "timeAttack": {},
-                          };
-        for (var timeLimit of timeLimitPageLabels) {
-            this.highScores["timeAttack"][timeLimit] = this.createNewEmptyScoreObj();
-        }
-        // Note that there are no high scores for deathMatch -- maybe we can track highest score reached (based on kills/asteroids blasted), but meh..
+        // We shouldn't ever reach this code.
     }
     this.timeLimitPageLabels = Object.getOwnPropertyNames(this.highScores["timeAttack"]);
 };
-
-GameStateHighScores.prototype.createNewEmptyScoreObj = function() {
-    var retObj = [];
-
-    // Initialize top 5 scores at each level
-    for (var i = 0; i < 5; i++) {
-        retObj.push( { "callSign": "Incognito", "kills": 0, "deaths": 0, "ast_s": 0, "ast_m": 0, "ast_l": 0, "score": 0 } );
-    }
-
-    return retObj;
-};
-
 
 GameStateHighScores.prototype.refreshPage = function() {
     this.uiItems = [];  // clear the uiItems list so we can build it anew
