@@ -81,9 +81,21 @@ AsteroidManager.prototype.update = function(dt_s, config = null) {
         this.spawnNewAsteroid(dt_s, configObj);
     }
 
+    var gameLogic = this.parentObj; // (this.parentObj is set by gameLogic when it adds this asteroid manager as a game object)
+    var arena = gameLogic.gameObjs.arena;
+
     // Iterate over all asteroids and call update
     for (var asteroid of this.asteroids) {
         asteroid.update(dt_s);
+
+        // Disable asteroid when it goes out of bounds
+        // NOTE: This is normally taken care of in most cases by collision detection between the asteroid and arena boundaries
+        // However, sometimes asteroids that are blasted near arena walls spawn new asteroids outside the walls
+        // That issue should be handled in the code for pawning new asteroids. But this is a quick and dirty catch-all solution
+        if (!arena.containsPt(asteroid.components["physics"].currPos)) {
+            // We have to pass in a dict obj, containing a list of asteroids, because of design choices made when writing disableAsteroids()
+            this.disableAsteroids( {"disableList": [asteroid]} );
+        }
     }
 
     // Iterate over all components of the AsteroidManager GameObject and update them
@@ -121,7 +133,10 @@ AsteroidManager.prototype.disableAsteroids = function(params) {
         // NOTE: Another (better?) way to particles access to the collision manager that manages their colliders is to simply give the particles a reference to the particle system they belong to
         astToDisable.disable( {"collisionMgrRef": this.collisionMgrRef} ); 
         this.activeAsteroids[astToDisable.size] -= 1;
-        if (this.activeAsteroids[astToDisable.size] < 0) { throw new Error("activeAsteroids reached negative count"); }
+        if (this.activeAsteroids[astToDisable.size] < 0)
+        {
+            throw new Error("activeAsteroids reached negative count");
+        }
     }
 };
 

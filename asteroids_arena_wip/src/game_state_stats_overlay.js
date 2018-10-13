@@ -3,8 +3,13 @@ function GameStateStatsOverlay() {
     GameStateBase.call(this);
     this.uiItems = [];
     this.messageQueue = null;
+
+    this.highlightedItemIndex = 0;
+    this.highlightedItem = null;    // Highlighted item, not necessarily selected/active
+
     this.activeItemIndex = 0;
     this.activeItem = null;
+
     this.bgm = null;
     this.newHighScore = false;
 }
@@ -28,6 +33,13 @@ GameStateStatsOverlay.prototype.initialize = function(transferObj = null) {
     this.activeItem = this.uiItems[this.activeItemIndex];
 
     this.bgm = transferObj.bgmObj;
+
+    // highlight the first highlightable item (this code duplicates the ArrorDown key handler. I'm being really lazy/sloppy with the code here)
+    this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
+    while (this.uiItems[this.highlightedItemIndex].isSelectable != true) {
+        this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
+    }
+    this.highlightedItem = this.uiItems[this.highlightedItemIndex];
 
 };
 
@@ -119,12 +131,12 @@ GameStateStatsOverlay.prototype.createDisplayMessage = function(infoObj) {
         }
 
         this.uiItems.push( new uiItemText(characterName, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("Kills:", "20px", "MenuFont", "white", 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kills_icon"].imgObj, 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
         this.uiItems.push( new uiItemText(infoObj.stats[shipID].kills.toString(), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("Deaths:", "20px", "MenuFont", "white", 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["deaths_icon"].imgObj, 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
         this.uiItems.push( new uiItemText(infoObj.stats[shipID].deaths.toString(), "20px", "MenuFont", "white", 0.38, yNDC + (i * ySpacing), "center", "middle", null ) );
 
-        this.uiItems.push( new uiItemText("Asteroids:", "20px", "MenuFont", "white", 0.46, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["asteroids_icon"].imgObj, 0.48, yNDC + (i * ySpacing), "center", "middle", null ) );
         this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "center", "middle", null ) );
         this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_s.toString(), "20px", "MenuFont", "white", 0.58, yNDC + (i * ySpacing), "center", "middle", null ) );
         this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "center", "middle", null ) );
@@ -154,12 +166,18 @@ GameStateStatsOverlay.prototype.render = function(canvasContext, dt_s) {
         item.draw(canvasContext);
     }
 
-    // Highlight active item
-    var hlItem = this.uiItems[this.activeItemIndex];
+    // Draw highlight box around currently highlightedItem (should really be part of a Menu/UI class)
+    // TODO look at the alignment of the highlighted item - adjust highlight position based on left/center/align (actual text rendering position seems to be affected by that)
+    var hlItem = this.uiItems[this.highlightedItemIndex];
     var hlWidth = Math.ceil( hlItem.getWidth(canvasContext) * 1.5 );
     var hlHeight = Math.ceil( hlItem.getHeight(canvasContext) * 1.5);
-    var hlX = Math.floor(MathUtils.lerp(hlItem.posNDC[0], 0, canvasContext.canvas.width) - hlWidth/2);
-    var hlY = Math.floor(MathUtils.lerp(hlItem.posNDC[1], 0, canvasContext.canvas.height) - hlHeight/2);
+
+    var hlXOffset = (hlItem.hasOwnProperty("align") && hlItem.align == "center") ? -hlWidth / 2 : 0;
+    //var hlYOffset = (hlItem.hasOwnProperty("baseline") && hlItem.align == "middle") ? -hlHeight / 2 : 0; // TODO delete, or update to handle top/middle/bottom
+    var hlYOffset = -hlHeight / 2;  // Note: this highlight assumes that textBaseline (vertical align) is "middle"
+
+    var hlX = Math.floor(MathUtils.lerp(hlItem.posNDC[0], 0, canvasContext.canvas.width) + hlXOffset);
+    var hlY = Math.floor(MathUtils.lerp(hlItem.posNDC[1], 0, canvasContext.canvas.height) + hlYOffset);
 
     canvasContext.lineWidth = 3;
     canvasContext.strokeStyle = "yellow";
@@ -180,19 +198,61 @@ GameStateStatsOverlay.prototype.handleKeyboardInput = function(evt) {
     } else if (evt.type == "keyup") {
         switch(evt.code) {
             case "ArrowUp":
-                this.activeItemIndex = (this.activeItemIndex + this.uiItems.length - 1) % this.uiItems.length;
+                // check if we have an active/selected UI item (this is janky. Again, there should be a class/object to handle this)
+                // The up/down arrows should only move the highlight, which should work only if the menu/form does _not_ have an active/selected UI item
+                if (this.activeItem == null) {
+                    // find previous selectable item (probably should be a function; but also.. a Menu should be an object.. and it's not. So....)
+                    // Because modulo math gets wonky with negative numbers, we'll add the length of the list to the current index, and then subtract an index; then do the mod
+                    this.highlightedItemIndex = ((this.highlightedItemIndex + this.uiItems.length) - 1) % this.uiItems.length;
+                    while (this.uiItems[this.highlightedItemIndex].isSelectable != true) {
+                        this.highlightedItemIndex = ((this.highlightedItemIndex + this.uiItems.length) - 1) % this.uiItems.length;
+                    }
+                    this.highlightedItem = this.uiItems[this.highlightedItemIndex];
+                }
                 break;
             case "ArrowDown":
-                this.activeItemIndex = (this.activeItemIndex + 1) % this.uiItems.length;
+                // check if we have an active/selected UI item (this is janky. Again, there should be a class/object to handle this)
+                if (this.activeItem == null) {
+                    this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
+                    while (this.uiItems[this.highlightedItemIndex].isSelectable != true) {
+                        this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
+                    }
+                    this.highlightedItem = this.uiItems[this.highlightedItemIndex];
+                }
                 break;
             case "Enter":
                 // Enqueue an action to be handled in the postRender step. We want all actions (e.g. state changes, etc.) to be handled in postRender, so that when the mainloop cycles back to the beginning, the first thing that happens is the preRender step in the new state (if the state changed)
-                var cmdMsg = { "topic": "UICommand",
-                               "targetObj": this,
-                               "command": this.uiItems[this.activeItemIndex].actionMsg["command"],
-                               "params": this.uiItems[this.activeItemIndex].actionMsg["params"]
-                             };
-                this.messageQueue.enqueue(cmdMsg);
+
+                // If we have an active item, deactivate it
+                if (this.activeItem) {
+                    this.activeItem.isActive = false;   // The UI Items store their activation state, so the menu can query it and determine how to interact with the UI items, based on user input
+                    this.activeItemIndex = -1;
+                    this.activeItem = null; // Unassign activeItem reference
+                }
+
+                // Else, we need to either select/activate the highlighted item (if it is selectable), or otherwise call the command of the "non-selectable" item
+                else {
+                    if (this.highlightedItem.actionMsg) {
+                        // if the UI item has an actionMsg associated with it, then enqueue that message
+                        var cmdMsg = { "topic": "UICommand",
+                                       "targetObj": this,
+                                       "command": this.uiItems[this.highlightedItemIndex].actionMsg["command"],
+                                       "params": this.uiItems[this.highlightedItemIndex].actionMsg["params"]
+                                     };
+                        this.messageQueue.enqueue(cmdMsg);
+                    }
+                    else {
+                        // Else, select the item (if it's selectable)
+                        if (this.highlightedItem.isSelectable) {
+                            this.activeItemIndex = this.highlightedItemIndex;
+                            this.activeItem = this.uiItems[this.highlightedItemIndex];
+                            this.activeItem.isActive = true;
+                        }
+                        else {
+                            // This case is probably nonsense. I don't think it's possible, given the properties of the UI. But at this point, I'm writing hack'n'slash code, so here is the case, anyway
+                        }
+                    }
+                }
                 break;
         }
     }
