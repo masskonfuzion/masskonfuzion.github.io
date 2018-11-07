@@ -418,7 +418,7 @@ SpaceshipAI.prototype.constructor = SpaceshipAI;
 
 SpaceshipAI.prototype.initialize = function(parentObj, knowledge) {
     // Set default state (a reference to the function itself, which is defined on the prototype)
-    console.log("Initializing AI. actionQueue: ", Object.assign({}, this.actionQueue));  // Make a copy of the queue because, by default, console.log() will echo a reference to the object, which is mutable (yuck!!! but we're debugging)
+    //console.log("Initializing AI. actionQueue: ", Object.assign({}, this.actionQueue));  // Make a copy of the queue because, by default, console.log() will echo a reference to the object, which is mutable (yuck!!! but we're debugging)
     this.defaultState = this.aiStateSelectTarget;
     this.parentObj = parentObj;
     this.knowledge = knowledge;
@@ -463,8 +463,8 @@ SpaceshipAI.prototype.dequeue = function() {
     // The pause state can be dequeued, leaving whatever the 2nd action was as the active
     // state.
     var behavior = this.actionQueue.shift();           // dequeue the current state/action/behavior
-    console.log("Dequeueing behavior: ", behavior);
-    console.log("actionQueue: ", Object.assign({}, this.actionQueue));
+    //console.log("Dequeueing behavior: ", behavior);
+    //console.log("actionQueue: ", Object.assign({}, this.actionQueue));
 
 };
 
@@ -474,15 +474,15 @@ SpaceshipAI.prototype.enqueue = function(behavior) {
 
     if (this.actionQueue.length == 0) {
         // if the actionQueue is empty, simply push() the behavior onto the end
-        console.log("Inserting behavior at tail of queue: ", behavior);
+        //console.log("Inserting behavior at tail of queue: ", behavior);
         this.actionQueue.push(behavior);
-        console.log("actionQueue: ", Object.assign({}, this.actionQueue));
+        //console.log("actionQueue: ", Object.assign({}, this.actionQueue));
     } else if (behavior.priority < this.actionQueue[0].priority) {
         // Peek at the first item in the queue. If its priority level is higher than the incoming
         // behavior's, then we can simply insert the incoming behavior at the head of the queue
-        console.log("Inserting behavior at head of queue: ", behavior);
+        //console.log("Inserting behavior at head of queue: ", behavior);
         this.actionQueue.unshift(behavior); // unshift() inserts one or more items at the front of an array
-        console.log("actionQueue: ", Object.assign({}, this.actionQueue));
+        //console.log("actionQueue: ", Object.assign({}, this.actionQueue));
     } else {
         // otherwise, we have to find a place to put the incoming behavior
         // (linear search.. can we do better?)
@@ -499,9 +499,9 @@ SpaceshipAI.prototype.enqueue = function(behavior) {
         // (the 0 in the 2nd parameter means "delete 0 items")
         // if the for loop (linear search) above didn't find a hit, then i will be the end of
         // the array. in that case, the splice() will be equivalent to push()
-        console.log("Inserting behavior at element " + i + ": ", behavior);
+        //console.log("Inserting behavior at element " + i + ": ", behavior);
         this.actionQueue.splice(i, 0, behavior);
-        console.log("actionQueue: ", Object.assign({}, this.actionQueue));
+        //console.log("actionQueue: ", Object.assign({}, this.actionQueue));
     }
 };
 

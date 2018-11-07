@@ -21,6 +21,7 @@ function GameLogic() {
     // NOTE: this.settings (i.e. gameLogic.settings) is DIFFERENT than the settings object stored in localStorage. localStorage has user-configurable settings. gameLogic has settings for the game itself (shouldn't be modified by the player/user
     this.settings = { "hidden": {}, "visible": {} };    // hidden settings are, e.g. point values for accomplishing certain goals; visible settings are, e.g. game config options
     this.gameStats = {};    // store things, e.g. player's score, in-game achievements, state variables, etc.
+    this.time_elapsed_s = 0.0;      // game time elapsed, in seconds
 
     this.addComponent("xplodPE", new ParticleEmitter());
 
@@ -383,15 +384,10 @@ GameLogic.prototype.handleKeyUpEvent = function(evt) {
     // NOTE: UI controls are hard-coded currently; but they could also be stored in a key mapping,
     // like this.keyCtrlMap, for easy customization
     else if (evt.code == "Escape") {
-        if (this.bgm) {
-            this.bgm.stop();
-        }
-
-        // TODO Pop up confirmation before exiting. Probably easiest to make a separate game state (i.e., stack it on top of the playing state)
         cmdMsg = { "topic": "UICommand",
                    "targetObj": this,
-                   "command": "changeState",
-                   "params": {"stateName": "MainMenu"}
+                   "command": "pauseState",
+                   "params": {"stateName": "Pause", "sendBGM": true}
                  };
         this.messageQueue.enqueue(cmdMsg);
     }
@@ -410,8 +406,9 @@ GameLogic.prototype.update = function(dt_s, config = null) {
     }
 
     // Do game-over check
-    this.checkForGameOver(dt_s);
 
+    this.checkForGameOver(dt_s);
+    this.time_elapsed_s += dt_s;
 };
 
 GameLogic.prototype.sendCmdToGameObj = function(msg) {
@@ -838,7 +835,7 @@ GameLogic.prototype.spawnAtNewLocation = function(queryObj, cushionDist) {
 
             if (sqDist <= Math.pow(cushionDist, 2)) {
                 failedNearbyTest = true;
-                break
+                break;
             }
         }
 
@@ -890,13 +887,36 @@ GameLogic.prototype.doUICommand = function(msg) {
     // The command is most likely to call a function. This is not quite a function callback, because we are not storing a pre-determined function ptr
     //console.log("In doUICommand(), with msg = ", msg);
 
+    // Construct an initial transfer object
+    var transferObj = {};
+    if (msg.params.sendBGM) {
+        var transferBGM = this.bgm;
+        this.bgm = null;
+
+        transferObj["bgmObj"] = transferBGM;
+    }
+
     switch (msg.command) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            // Note how we're using the transferObj here. It should be like this everywhere we call changeState or pauseState or whatever
-            var transferObj = msg.params.hasOwnProperty("transferObj") ? msg.params.transferObj : null;   // Use msg.params if it exists; else pass null
+
+            // Start by grabbing a reference to transfer object (if any) that was already part of the message
+            var transferObj = msg.params.hasOwnProperty("transferObj") ? msg.params.transferObj : {};   // Use msg.params if it exists; else create an empty one
+
+            // Next, update the transferObj with the background music object (bgmObj) from this state, to pass it into the state to which we transition
+            if (msg.params.sendBGM) {
+                var transferBGM = this.bgm;
+                this.bgm = null;    // destroy the bgm obj in this state; pass it into the next state (most likely, the next sate is the pause menu, or other in-game menu.)
+
+                transferObj["bgmObj"] = transferBGM;
+            }
+
             gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
+            break;
+
+        case "pauseState":
+            gameStateMgr.pauseState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
             break;
     }
 
@@ -913,13 +933,16 @@ GameLogic.prototype.checkForGameOver = function(dt_s) {
 
                     var shipObjectID = this.gameObjs[shipID].objectID;
                     var characterName = this.characters[shipObjectID].callSign;
+                    // TODO add the winning time to the display message (time_elapsed_s)
                     var winner = { "characterName": characterName
                                  }
+                    // Note: I don't like hard-coding the gameMode property; perhaps we can pull from game.settings.visible.gameMode (which is stored as "Death Match") and convert to camelCase.. But hard-coding is quicker :-D
                     var gameOverInfo = { "winnerInfo": winner,
                                          "settings": game.settings["visible"],
                                          "stats": this.gameStats,
                                          "shipDict" : this.shipDict,
-                                         "characters": this.characters
+                                         "characters": this.characters,
+                                         "elapsed": this.time_elapsed_s
                                        };
 
                     // Transfer this GameLogicObject's bgm object into the GameOver state, so the music can keep playing
@@ -964,11 +987,12 @@ GameLogic.prototype.checkForGameOver = function(dt_s) {
 
                 // TODO instead of passing in this.gameStats raw, make the transfer object be a collection of messages and their corresponding positions (essentially a control template for the display of the Game Over message -- i.e. score leaders in descending order)
                 // e.g. Most kills, best score, most deaths
+                // Note: I don't like hard-coding the gameMode property; perhaps we can pull from game.settings.visible.gameMode (which is stored as "Death Match") and convert to camelCase.. But hard-coding is quicker :-D
                 var gameOverInfo = { "winnerInfo": winner,
                                      "settings": game.settings["visible"],
                                      "stats": this.gameStats,
                                      "shipDict" : this.shipDict,
-                                     "characters": this.characters
+                                     "characters": this.characters,
                                    };
 
                 var cmdMsg = { "topic": "UICommand",

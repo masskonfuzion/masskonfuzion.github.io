@@ -105,5 +105,6 @@ GameStatePlaying.prototype.postRender = function(canvasContext, dt_s) {
 // A function callback registered with as the window event listener
 // Can be coded to handle input directly, or can be a wrapper around an internal game logic object's input handler
 GameStatePlaying.prototype.handleKeyboardInput = function(evt) {
+    // TODO maybe handleKeyboardInput should return a value (true if the keypress was handled by gameLogic, false if not) so the game logic obj can handle only keypresses relevant to gameplay, and the GameState can handle others
     this.gameLogic.handleKeyboardInput(evt);
 };

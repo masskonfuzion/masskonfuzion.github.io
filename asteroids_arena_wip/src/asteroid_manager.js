@@ -135,7 +135,9 @@ AsteroidManager.prototype.disableAsteroids = function(params) {
         this.activeAsteroids[astToDisable.size] -= 1;
         if (this.activeAsteroids[astToDisable.size] < 0)
         {
-            throw new Error("activeAsteroids reached negative count");
+            this.activeAsteroids[astToDisable.size] = 0;
+            console.log("activeAsteroids reached negative count (size = " + astToDisable.size + "). Clamping to 0");
+            //throw new Error("activeAsteroids reached negative count"); // TODO some day... figure out how we reach a negative asteroid count
         }
     }
 };

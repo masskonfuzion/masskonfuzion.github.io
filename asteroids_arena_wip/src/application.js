@@ -50,11 +50,11 @@ GameApplication.prototype.loadSettings = function() {
         this.settings["visible"]["gameModeSettings"] = { "deathMatch": { "shipKills": 15,
                                                                          "gunsEnabled": "yes"
                                                                        },
-                                                         "timeAttack": { "timeLimit": "2:00" } 
+                                                         "timeAttack": { "timeLimit": "2:00" }
                                                        }
     }
     // Save settings to localStorage. We have to JSON.stringify() the object, because localStorage wants key/value pairs of strings (even numbers get saved as strings)
-    // TODO maybe make wrapper functions in the game/application object, for saving/loading localSettings 
+    // TODO maybe make wrapper functions in the game/application object, for saving/loading localSettings
     localStorage.setItem('settings', JSON.stringify(this.settings));
 };
 
@@ -66,25 +66,42 @@ GameApplication.prototype.initializeHighScores = function() {
 
     var highScores = {};
     if (!highScoresFromLocalStorage) {
-        // timeLimitPageLabels for this high scores obj is taken (hard-coded) from the settings menu. It is hard-coded. TODO maybe specify the time limits somewhere centralized/global
+        // timeLimitPageLabels for this high scores obj is taken (hard-coded) from the settings menu. TODO maybe specify the time limits somewhere centralized/global
         var timeLimitPageLabels = [ "1:00", "2:00", "3:00", "5:00", "7:00", "10:00", "15:00", "20:00", "25:00", "30:00" ];
+        // killCountPageLabels for this high scores obj is taken (hard-coded) from the settings menu. TODO maybe specify the kill count targets somewhere centralized/global
+        var killCountPageLabels = [ "5", "10", "15", "20", "25", "50", "75", "100" ]
         highScores = { "timeAttack": {},
+                       "deathMatch": {}
                      };
         for (var timeLimit of timeLimitPageLabels) {
-            highScores["timeAttack"][timeLimit] = this.createNewEmptyScoreObj();
+            highScores["timeAttack"][timeLimit] = this.createNewEmptyTimeAttackHighScoreObj();
         }
-        // Note that there are no high scores for deathMatch -- maybe we can track highest score reached (based on kills/asteroids blasted), but meh..
+        for (var killCount of killCountPageLabels) {
+            highScores["deathMatch"][killCount] = this.createNewEmptyDeathMatchHighScoreObj();
+        }
 
         localStorage.setItem('highScores', JSON.stringify(highScores));
     }
 };
 
-GameApplication.prototype.createNewEmptyScoreObj = function() {
+GameApplication.prototype.createNewEmptyTimeAttackHighScoreObj = function() {
     var retObj = [];
 
     // Initialize top 5 scores at each level
     for (var i = 0; i < 5; i++) {
         retObj.push( { "callSign": "Incognito", "kills": 0, "deaths": 0, "ast_s": 0, "ast_m": 0, "ast_l": 0, "score": 0 } );
+    }
+
+    return retObj;
+};
+
+
+GameApplication.prototype.createNewEmptyDeathMatchHighScoreObj = function() {
+    var retObj = [];
+
+    // Initialize top 5 scores at each level
+    for (var i = 0; i < 5; i++) {
+        retObj.push( { "callSign": "Incognito", "time": 9999 } );  // NOTE: time is stored in seconds, but we'll output times in MM:SS.s (let's try to do 10ths of seconds, to make the scores more interesting)
     }
 
     return retObj;

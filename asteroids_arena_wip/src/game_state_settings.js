@@ -54,7 +54,7 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
 
     this.uiItems.push( new uiItemText("Timer Attack Options", "32px", "MenuFont", "white", 0.05, 0.35, "left", "middle") );
     this.uiItems.push( new uiItemText("Time Limit", "24px", "MenuFont", "white", 0.05, 0.40, "left", "middle") );
-    
+
     var uiItemTimeLimitSetting = new uiItemSpinner(null, "24px", "MenuFont", "white", 0.25, 0.40, "left", "middle");
     uiItemTimeLimitSetting.setSelectableValues( [ "1:00", "2:00", "3:00", "5:00", "7:00", "10:00", "15:00", "20:00", "25:00", "30:00" ] );
     uiItemTimeLimitSetting.setBoundObj(game.settings.visible.gameModeSettings.timeAttack);
@@ -136,7 +136,7 @@ GameStateSettings.prototype.render = function(canvasContext, dt_s) {
     var hlY = Math.floor(MathUtils.lerp(hlItem.posNDC[1], 0, canvasContext.canvas.height) + hlYOffset);
 
     canvasContext.lineWidth = 3;
-    
+
     canvasContext.strokeStyle = this.activeItem == null ? "yellow" : "red";
     canvasContext.strokeRect(hlX, hlY, hlWidth, hlHeight);
 
@@ -237,7 +237,6 @@ GameStateSettings.prototype.handleKeyboardInput = function(evt) {
                              };
                 this.messageQueue.enqueue(cmdMsg);
                 break;
-                
         }
     }
 };

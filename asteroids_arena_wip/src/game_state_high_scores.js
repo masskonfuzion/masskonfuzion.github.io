@@ -1,5 +1,4 @@
 function GameStateHighScores() {
-    // TODO! Make this menu/game state actually the high scores menu. It is copy/paste from GameStateSettings
     GameStateBase.call(this);
     this.messageQueue = null;
 
@@ -14,8 +13,11 @@ function GameStateHighScores() {
 
     this.page = 0;  // "Page" number, for looking at different "pages" of high scores data
     this.highScores = {};
-    this.timeLimitPageLabels = [];  // List of "page labels" -- the different time lengths (in timeAttack) that have 
-    // TODO maybe also keep high scores for fastest times to reach kill counts, in DeathMatch mode
+
+    this.scoreCategories = ["timeAttack", "deathMatch"];
+    this.scoreCategorySelector = 0;
+    this.timeAttackPageLabels = []; // List of "page labels" -- the different time lengths (in timeAttack) 
+    this.deathMatchPageLabels = []; // List of "page labels" -- the different kill counts
 
     this.bgm = null;
 }
@@ -47,46 +49,24 @@ GameStateHighScores.prototype.loadHighScores = function() {
         this.highScores = JSON.parse(highScoresObj);
     }
     else {
-        // We shouldn't ever reach this code.
+        // We shouldn't ever reach this block. If we do get here, it means high scores are corrupted in the web browser's localStorage space.
+        // The easiest fix would be to clear the browser cache for this game (which wuold wipe out scores and settings)
     }
-    this.timeLimitPageLabels = Object.getOwnPropertyNames(this.highScores["timeAttack"]);
+    this.timeAttackPageLabels = Object.getOwnPropertyNames(this.highScores["timeAttack"]);
+    this.deathMatchPageLabels = Object.getOwnPropertyNames(this.highScores["deathMatch"]);
 };
 
 GameStateHighScores.prototype.refreshPage = function() {
     this.uiItems = [];  // clear the uiItems list so we can build it anew
 
-    // TODO implement all pages of high scores (for timeLimit in this.highScores.timeAttack)
-    var timeLimit = this.timeLimitPageLabels[this.page];
-    // Display the time limit
-    this.uiItems.push( new uiItemText(timeLimit, "32px", "MenuFont", "white", 0.05, 0.05, "left", "middle") );
-
-    var yNDC = 0.25;
-    var ySpacing = 0.1;
-
-    // TODO implement an Image UI Type
-    // scores
-    for (var i = 0; i < this.highScores["timeAttack"][timeLimit].length; i++) {
-        var scoreItem = this.highScores["timeAttack"][timeLimit][i];
-
-        var callSign = scoreItem.callSign;
-        this.uiItems.push( new uiItemText(callSign, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kills_icon"].imgObj, 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(scoreItem.kills.toString(), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["deaths_icon"].imgObj, 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(scoreItem.deaths.toString(), "20px", "MenuFont", "white", 0.38, yNDC + (i * ySpacing), "center", "middle", null ) );
-
-        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["asteroids_icon"].imgObj, 0.48, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(scoreItem.ast_s.toString(), "20px", "MenuFont", "white", 0.58, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(scoreItem.ast_m.toString(), "20px", "MenuFont", "white", 0.66, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("L:", "20px", "MenuFont", "white", 0.70, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(scoreItem.ast_l.toString(), "20px", "MenuFont", "white", 0.74, yNDC + (i * ySpacing), "center", "middle", null ) );
-
-        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.80, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(scoreItem.score.toString(), "20px", "MenuFont", "white", 0.88, yNDC + (i * ySpacing), "center", "middle", null ) );
+    switch(this.scoreCategorySelector) {
+        case 0: // timeAttack
+            this.refreshScorePageTimeAttack();
+        break;
+        case 1: // deathMatch
+            this.refreshScorePageDeathMatch();
+        break;
     }
-
 
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 
@@ -190,7 +170,7 @@ GameStateHighScores.prototype.handleKeyboardInput = function(evt) {
                 }
                 // Otherwise, decrease the "page number" of displayed high score data
                 else {
-                    this.page = (this.page + this.timeLimitPageLabels.length - 1) % this.timeLimitPageLabels.length;
+                    this.page = (this.page + this.timeAttackPageLabels.length - 1) % this.timeAttackPageLabels.length;
                     this.refreshPage();
                 }
                 break;
@@ -209,7 +189,22 @@ GameStateHighScores.prototype.handleKeyboardInput = function(evt) {
                 }
                 // Otherwise, increase the "page number" of displayed high score data
                 else {
-                    this.page = (this.page + 1) % this.timeLimitPageLabels.length;
+                    this.page = (this.page + 1) % this.timeAttackPageLabels.length;
+                    this.refreshPage();
+                }
+                break;
+            case "PageDown":
+                if (!this.activeItem) {
+                    // Change the score category selector, as long as there are no active/selected items (we don't want to change category while an item is active)
+                    this.scoreCategorySelector = (this.scoreCategorySelector + 1) % this.scoreCategories.length;
+                    this.page = 0;
+                    this.refreshPage();
+                }
+                break;
+            case "PageUp":
+                if (!this.activeItem) {
+                    this.scoreCategorySelector = (this.scoreCategorySelector + this.scoreCategories.length - 1) % this.scoreCategories.length;
+                    this.page = 0;
                     this.refreshPage();
                 }
                 break;
@@ -316,4 +311,71 @@ GameStateHighScores.prototype.doUICommand = function(msg) {
 // Menus/UIs are not structured as objects
 GameStateHighScores.prototype.sendUserInputToActiveItem = function(params) {
     this.activeItem.handleUserInput(params);
+};
+
+
+// Generate a list of UI items for a page of high scores, for time attack mode
+// (Assumes that this.uiItems is an empty list
+GameStateHighScores.prototype.refreshScorePageTimeAttack = function() {
+    var timeLimit = this.timeAttackPageLabels[this.page];
+    // Display the time limit (TODO position a little bit lower on the screen, to make room for the game mode)
+    this.uiItems.push( new uiItemText(timeLimit, "32px", "MenuFont", "white", 0.05, 0.05, "left", "middle") );
+
+    var yNDC = 0.25;
+    var ySpacing = 0.1;
+
+    // scores
+    for (var i = 0; i < this.highScores["timeAttack"][timeLimit].length; i++) {
+        var scoreItem = this.highScores["timeAttack"][timeLimit][i];
+
+        var callSign = scoreItem.callSign;
+        this.uiItems.push( new uiItemText(callSign, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kills_icon"].imgObj, 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.kills.toString(), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["deaths_icon"].imgObj, 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.deaths.toString(), "20px", "MenuFont", "white", 0.38, yNDC + (i * ySpacing), "center", "middle", null ) );
+
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["asteroids_icon"].imgObj, 0.48, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.ast_s.toString(), "20px", "MenuFont", "white", 0.58, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.ast_m.toString(), "20px", "MenuFont", "white", 0.66, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("L:", "20px", "MenuFont", "white", 0.70, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.ast_l.toString(), "20px", "MenuFont", "white", 0.74, yNDC + (i * ySpacing), "center", "middle", null ) );
+
+        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.80, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(scoreItem.score.toString(), "20px", "MenuFont", "white", 0.88, yNDC + (i * ySpacing), "center", "middle", null ) );
+    }
+};
+
+// Generate a list of UI items for a page of high scores, for death match mode
+// (Assumes that this.uiItems is an empty list
+GameStateHighScores.prototype.refreshScorePageDeathMatch = function() {
+    var killCount = this.deathMatchPageLabels[this.page];
+    // Display kill count (TODO position a little bit lower on the screen, to make room for the game mode)
+    this.uiItems.push( new uiItemText(killCount, "32px", "MenuFont", "white", 0.05, 0.05, "left", "middle") );
+
+    var yNDC = 0.25;
+    var ySpacing = 0.1;
+
+    // scores
+    for (var i = 0; i < this.highScores["deathMatch"][killCount].length; i++) {
+        var scoreItem = this.highScores["deathMatch"][killCount][i];
+
+        var callSign = scoreItem.callSign;
+        this.uiItems.push( new uiItemText(callSign, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["clock_icon"].imgObj, 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(this.getTimeStringFromFloatValue(scoreItem.time), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
+    }
+};
+
+// Return a time string (e.g. MM:SS.D), given an input number (float) of seconds
+GameStateHighScores.prototype.getTimeStringFromFloatValue = function(val) {
+    var minutes = Math.floor(val / 60);
+    var seconds = val % 60;
+
+    // string values of min/sec
+    var sMin = minutes.toString();
+    var sSec = seconds < 10 ? seconds.toString().padStart(2, "0") : seconds.toString();    // Use padStart() to 0-pad seconds
+    return sMin + ":" + sSec
 };
