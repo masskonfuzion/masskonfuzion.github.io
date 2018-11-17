@@ -78,7 +78,7 @@ GameStateSettings.prototype.initialize = function(transferObj = null) {
     this.uiItems.push( new uiItemText("Turn Right", "24px", "MenuFont", "white", 0.55, 0.35, "left", "middle") );
     this.uiItems.push( new uiItemText("D", "24px", "MenuFont", "white", 0.75, 0.35, "left", "middle") );
     this.uiItems.push( new uiItemText("Fire", "24px", "MenuFont", "white", 0.55, 0.4, "left", "middle") );
-    this.uiItems.push( new uiItemText("L Shift", "24px", "MenuFont", "white", 0.75, 0.4, "left", "middle") );
+    this.uiItems.push( new uiItemText("Space", "24px", "MenuFont", "white", 0.75, 0.4, "left", "middle") );
 
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 

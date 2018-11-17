@@ -41,7 +41,7 @@ GameLogic.prototype.initialize = function(configObj = null) {
     this.keyCtrlMap["thrust"] = { "code": "KeyW", "state": false };
     this.keyCtrlMap["turnLeft"] = { "code": "KeyA", "state": false };
     this.keyCtrlMap["turnRight"] = { "code": "KeyD", "state": false };
-    this.keyCtrlMap["fireA"] = { "code": "ShiftLeft", "state": false };
+    this.keyCtrlMap["fireA"] = { "code": "Space", "state": false };
 
 
     this.messageQueue = new MessageQueue();
@@ -561,8 +561,8 @@ GameLogic.prototype.processCollisionEvent = function(msg) {
                    "targetObj": this,
                    "params": { "numParticles": numParticles,
                                "center": [ asteroidRef.components["physics"].currPos[0], asteroidRef.components["physics"].currPos[1] ],
-                               "minColor": [64,64,64],
-                               "maxColor": [255,255,255]
+                               "minColor": [64,64,0],
+                               "maxColor": [255,255,0]
                              }
                  };
         this.messageQueue.enqueue(cmdMsg);

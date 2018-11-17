@@ -165,22 +165,22 @@ GameStateStatsOverlay.prototype.createDisplayMessage = function(infoObj) {
             }
         }
 
-        this.uiItems.push( new uiItemText(characterName, "20px", "MenuFont", "white", 0.1, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kills_icon"].imgObj, 0.2, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].kills.toString(), "20px", "MenuFont", "white", 0.26, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["deaths_icon"].imgObj, 0.32, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].deaths.toString(), "20px", "MenuFont", "white", 0.38, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText(characterName, "20px", "MenuFont", "white", 0.02, yNDC + (i * ySpacing), "left", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kills_icon"].imgObj, 0.27, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].kills.toString(), "20px", "MenuFont", "white", 0.28, yNDC + (i * ySpacing), "left", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["deaths_icon"].imgObj, 0.38, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].deaths.toString(), "20px", "MenuFont", "white", 0.40, yNDC + (i * ySpacing), "left", "middle", null ) );
 
-        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["asteroids_icon"].imgObj, 0.48, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_s.toString(), "20px", "MenuFont", "white", 0.58, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_m.toString(), "20px", "MenuFont", "white", 0.66, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText("L:", "20px", "MenuFont", "white", 0.70, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_l.toString(), "20px", "MenuFont", "white", 0.74, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["asteroids_icon"].imgObj, 0.50, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText("S:", "20px", "MenuFont", "white", 0.54, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_s.toString(), "20px", "MenuFont", "white", 0.55, yNDC + (i * ySpacing), "left", "middle", null ) );
+        this.uiItems.push( new uiItemText("M:", "20px", "MenuFont", "white", 0.62, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_m.toString(), "20px", "MenuFont", "white", 0.63, yNDC + (i * ySpacing), "left", "middle", null ) );
+        this.uiItems.push( new uiItemText("L:", "20px", "MenuFont", "white", 0.70, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].asteroids_blasted_l.toString(), "20px", "MenuFont", "white", 0.71, yNDC + (i * ySpacing), "left", "middle", null ) );
 
-        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.80, yNDC + (i * ySpacing), "center", "middle", null ) );
-        this.uiItems.push( new uiItemText(infoObj.stats[shipID].score.toString(), "20px", "MenuFont", "white", 0.88, yNDC + (i * ySpacing), "center", "middle", null ) );
+        this.uiItems.push( new uiItemText("Score:", "20px", "MenuFont", "white", 0.84, yNDC + (i * ySpacing), "right", "middle", null ) );
+        this.uiItems.push( new uiItemText(infoObj.stats[shipID].score.toString(), "20px", "MenuFont", "white", 0.86, yNDC + (i * ySpacing), "left", "middle", null ) );
         i += 1;
     }
 
@@ -382,7 +382,7 @@ GameStateStatsOverlay.prototype.sortScores = function(scoreObj) {
 // Return a time string (e.g. MM:SS.D), given an input number (float) of seconds
 GameStateStatsOverlay.prototype.getTimeStringFromFloatValue = function(val) {
     var minutes = Math.floor(val / 60);
-    var seconds = val % 60;
+    var seconds = Math.floor(val % 60 * 10) / 10;   // This pesky % operation introduces floating pt error
 
     // string values of min/sec
     var sMin = minutes.toString();

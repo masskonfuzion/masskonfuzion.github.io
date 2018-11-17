@@ -166,7 +166,11 @@ AsteroidManager.prototype.disableAndSpawnAsteroids = function(params) {
         // Disable asteroid
         astToDisable.disable({"collisionMgrRef": this.collisionMgrRef});
         this.activeAsteroids[astToDisable.size] -= 1;
-        if (this.activeAsteroids[astToDisable.size] < 0) { throw new Error("activeAsteroids reached negative count"); }
+        if (this.activeAsteroids[astToDisable.size] < 0) {
+            this.activeAsteroids[astToDisable.size] = 0;
+            console.log("activeAsteroids[" + astToDisable.size + "] reached negative count. Setting to 0");
+            //throw new Error("activeAsteroids reached negative count");
+        }
 
         var bannedLocations = this.createBannedLocationsList(70);
         if (astToDisable.size > 0) {

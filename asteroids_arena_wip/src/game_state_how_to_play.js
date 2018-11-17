@@ -24,7 +24,7 @@ GameStateHowToPlay.prototype.initialize = function(transferObj = null) {
     this.uiItems.push( new uiItemText("W: Thrust", "28px", "MenuFont", "white", 0.5, 0.16, "center", "middle", null) );
     this.uiItems.push( new uiItemText("A: Turn left", "28px", "MenuFont", "white", 0.5, 0.22, "center", "middle", null) );
     this.uiItems.push( new uiItemText("D: Turn right", "28px", "MenuFont", "white", 0.5, 0.28, "center", "middle", null) );
-    this.uiItems.push( new uiItemText("L Shift: Fire", "28px", "MenuFont", "white", 0.5, 0.34, "center", "middle", null) );
+    this.uiItems.push( new uiItemText("Space: Fire", "28px", "MenuFont", "white", 0.5, 0.34, "center", "middle", null) );
     this.uiItems.push( new uiItemText("Objectives", "32px", "MenuFont", "white", 0.3, 0.5, "center", "middle", null) );
     this.uiItems.push( new uiItemText("Blow up the most stuff", "28px", "MenuFont", "white", 0.5, 0.56, "center", "middle", null) );
     this.uiItems.push( new uiItemText("Score the most points", "28px", "MenuFont", "white", 0.5, 0.62, "center", "middle", null) );
