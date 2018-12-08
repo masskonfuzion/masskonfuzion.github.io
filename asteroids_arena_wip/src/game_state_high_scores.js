@@ -11,7 +11,8 @@ function GameStateHighScores() {
     this.activeItemIndex = -1;      // -1 means "no active selection"; but probably rely on the value of activeItem itself to determine whether or not the user is interacting with an item
     this.activeItem = null;         // Active/selected item
 
-    this.page = 0;  // "Page" number, for looking at different "pages" of high scores data
+    this.currPage = 0;  // "Page" number, for looking at different "pages" of high scores data
+    this.numPages = 0;
     this.highScores = {};
 
     this.scoreCategories = ["timeAttack", "deathMatch"];
@@ -62,12 +63,23 @@ GameStateHighScores.prototype.refreshPage = function() {
     switch(this.scoreCategorySelector) {
         case 0: // timeAttack
             this.refreshScorePageTimeAttack();
+            this.numPages = this.timeAttackPageLabels.length;
         break;
         case 1: // deathMatch
             this.refreshScorePageDeathMatch();
+            this.numPages = this.deathMatchPageLabels.length;
         break;
     }
 
+
+    // Static UI items
+    this.uiItems.push( new uiItemText("Mode", "16px", "MenuFont", "white", 0.85, 0.05, "right", "middle", null ) );
+    this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kb_up_icon"].imgObj, 0.9, 0.05, "center", "middle", null ) );
+    this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kb_down_icon"].imgObj, 0.95, 0.05, "center", "middle", null ) );
+    this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kb_left_icon"].imgObj, 0.07, 0.85, "center", "middle", null ) );
+    this.uiItems.push( new uiItemText("Prev", "16px", "MenuFont", "white", 0.07, 0.80, "center", "middle", null ) );
+    this.uiItems.push( new uiItemImage(game.imgMgr.imageMap["kb_right_icon"].imgObj, 0.93, 0.85, "center", "middle", null ) );
+    this.uiItems.push( new uiItemText("Next", "16px", "MenuFont", "white", 0.93, 0.80, "center", "middle", null ) );
     this.uiItems.push( new uiItemText("Return", "36px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "MainMenu"}}) );  // Currently, stateName is the name of the state obj (var) in the global scope
 
     // highlight the first highlightable item (this code duplicates the ArrorDown key handler. I'm being really lazy/sloppy with the code here)
@@ -133,31 +145,8 @@ GameStateHighScores.prototype.handleKeyboardInput = function(evt) {
     if (evt.type == "keydown") {
         // haven't decided what (if anything) to do on keydown
     } else if (evt.type == "keyup") {
+        // TODO - correct KeyDown to KeyUp, everywhere
         switch(evt.code) {
-            case "ArrowUp":
-                // check if we have an active/selected UI item (this is janky. Again, there should be a class/object to handle this)
-                // The up/down arrows should only move the highlight, which should work only if the menu/form does _not_ have an active/selected UI item
-                if (this.activeItem == null) {
-                    // find previous selectable item (probably should be a function; but also.. a Menu should be an object.. and it's not. So....)
-                    // Because modulo math gets wonky with negative numbers, we'll add the length of the list to the current index, and then subtract an index; then do the mod
-                    this.highlightedItemIndex = ((this.highlightedItemIndex + this.uiItems.length) - 1) % this.uiItems.length;
-                    while (this.uiItems[this.highlightedItemIndex].isSelectable != true) {
-                        this.highlightedItemIndex = ((this.highlightedItemIndex + this.uiItems.length) - 1) % this.uiItems.length;
-                    }
-                    this.highlightedItem = this.uiItems[this.highlightedItemIndex];
-                }
-                break;
-            case "ArrowDown":
-                // check if we have an active/selected UI item (this is janky. Again, there should be a class/object to handle this)
-                if (this.activeItem == null) {
-                    this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
-                    while (this.uiItems[this.highlightedItemIndex].isSelectable != true) {
-                        this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
-                    }
-                    this.highlightedItem = this.uiItems[this.highlightedItemIndex];
-                }
-                break;
-            // TODO - correct KeyDown to KeyUp, everywhere
             case "ArrowLeft":
                 // If there is an active/selected UI item, send input to it
                 if (this.activeItem) {
@@ -170,7 +159,7 @@ GameStateHighScores.prototype.handleKeyboardInput = function(evt) {
                 }
                 // Otherwise, decrease the "page number" of displayed high score data
                 else {
-                    this.page = (this.page + this.timeAttackPageLabels.length - 1) % this.timeAttackPageLabels.length;
+                    this.currPage = (this.currPage + this.numPages - 1) % this.numPages;
                     this.refreshPage();
                 }
                 break;
@@ -189,22 +178,24 @@ GameStateHighScores.prototype.handleKeyboardInput = function(evt) {
                 }
                 // Otherwise, increase the "page number" of displayed high score data
                 else {
-                    this.page = (this.page + 1) % this.timeAttackPageLabels.length;
+                    this.currPage = (this.currPage + 1) % this.numPages;
                     this.refreshPage();
                 }
                 break;
+            case "ArrowDown":
             case "PageDown":
                 if (!this.activeItem) {
                     // Change the score category selector, as long as there are no active/selected items (we don't want to change category while an item is active)
                     this.scoreCategorySelector = (this.scoreCategorySelector + 1) % this.scoreCategories.length;
-                    this.page = 0;
+                    this.currPage = 0;
                     this.refreshPage();
                 }
                 break;
+            case "ArrowUp":
             case "PageUp":
                 if (!this.activeItem) {
                     this.scoreCategorySelector = (this.scoreCategorySelector + this.scoreCategories.length - 1) % this.scoreCategories.length;
-                    this.page = 0;
+                    this.currPage = 0;
                     this.refreshPage();
                 }
                 break;
@@ -317,7 +308,7 @@ GameStateHighScores.prototype.sendUserInputToActiveItem = function(params) {
 // Generate a list of UI items for a page of high scores, for time attack mode
 // (Assumes that this.uiItems is an empty list
 GameStateHighScores.prototype.refreshScorePageTimeAttack = function() {
-    var timeLimit = this.timeAttackPageLabels[this.page];
+    var timeLimit = this.timeAttackPageLabels[this.currPage];
     this.uiItems.push( new uiItemText("Time Attack", "36px", "MenuFont", "lightgray", 0.052, 0.052, "left", "middle") );
     this.uiItems.push( new uiItemText("Time Attack", "36px", "MenuFont", "yellow", 0.05, 0.05, "left", "middle") );
     this.uiItems.push( new uiItemText("Time Limit", "32px", "MenuFont", "white", 0.02, 0.15, "left", "middle") );
@@ -353,7 +344,7 @@ GameStateHighScores.prototype.refreshScorePageTimeAttack = function() {
 // Generate a list of UI items for a page of high scores, for death match mode
 // (Assumes that this.uiItems is an empty list
 GameStateHighScores.prototype.refreshScorePageDeathMatch = function() {
-    var killCount = this.deathMatchPageLabels[this.page];
+    var killCount = this.deathMatchPageLabels[this.currPage];
     // Display kill count (TODO position a little bit lower on the screen, to make room for the game mode)
     this.uiItems.push( new uiItemText("Death Match", "36px", "MenuFont", "lightgray", 0.052, 0.052, "left", "middle") );
     this.uiItems.push( new uiItemText("Death Match", "36px", "MenuFont", "yellow", 0.05, 0.05, "left", "middle") );

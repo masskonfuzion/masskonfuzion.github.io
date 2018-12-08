@@ -8,6 +8,8 @@ function GameStateCredits() {
 
     this.activeItemIndex = -1;      // -1 means "no active selection"; but probably rely on the value of activeItem itself to determine whether or not the user is interacting with an item
     this.activeItem = null;         // Active/selected item
+
+    this.bgm = null;
 }
 
 GameStateCredits.prototype = Object.create(GameStateBase.prototype);
@@ -27,10 +29,25 @@ GameStateCredits.prototype.initialize = function(transferObj = null) {
         this.highlightedItemIndex = (this.highlightedItemIndex + 1) % this.uiItems.length;
     }
     this.highlightedItem = this.uiItems[this.highlightedItemIndex];
+
+    // TODO move bgm out to a sound/resource manager. We're just testing here -- make the BGM/sound manager global (or, at least not actually "global", but visible to all game states)
+    if (transferObj && transferObj.bgmObj) {
+        this.bgm = transferObj.bgmObj;
+    }
+    else {
+        // TODO replace with a sound asset located in the repository (and uploaded to origin)
+        this.bgm = new Sound("assets/sounds/masskonfuzion-break_some_rocks.mp3", {"loop": true});
+        this.bgm.play({"volume": 1.0});     // TODO move bgm out to a sound/resource manager
+    }
 };
 
 GameStateCredits.prototype.cleanup = function() {
     this.uiItems = [];
+
+    // "if" here, because this.bgm might be null, depending on which state we're switching to. See GameStateMainMenu.prototype.doUICommand
+    if (this.bgm) {
+        this.bgm.stop();    // TODO move bgm out to a sound/resource manager
+    }
 };
 
 GameStateCredits.prototype.render = function(canvasContext, dt_s) {
@@ -173,7 +190,20 @@ GameStateCredits.prototype.doUICommand = function(msg) {
         case "changeState":
             // call the game state manager's changestate function
             // NOTE gameStateMgr is global, because I felt like making it that way. But we could also have the GameStateManager handle the message (instead of having this (active game state) handle the message, by calling a GameStateManager member function
-            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName]);
+            // Note: if you saw the BGM transfer logic in game_logic.js, you'll notice that it's different here. We are building a transferObj here, whereas in game_logic.js, the obj is already constructed by this point.
+
+            var transferObj;
+            if (msg.params.sendBGM) {
+                var transferBGM = this.bgm;
+                this.bgm = null;
+
+                transferObj = { "bgmObj": transferBGM }
+            }
+            else {
+                transferObj = null;
+            }
+
+            gameStateMgr.changeState(gameStateMgr.stateMap[msg.params.stateName], transferObj);
             break;
     }
 

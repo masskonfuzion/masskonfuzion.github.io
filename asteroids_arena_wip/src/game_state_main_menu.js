@@ -11,6 +11,8 @@ function GameStateMainMenu() {
 
     this.activeItemIndex = -1;      // -1 means "no active selection"; but probably rely on the value of activeItem itself to determine whether or not the user is interacting with an item
     this.activeItem = null;         // Active/selected item
+
+    this.bgm = null;
 }
 
 GameStateMainMenu.prototype = Object.create(GameStateBase.prototype);
@@ -30,10 +32,9 @@ GameStateMainMenu.prototype.initialize = function(transferObj = null) {
     this.uiItems.push( new uiItemText("Play Game", "36px", "MenuFont", "white", 0.5, 0.45, "center", "middle", {"command": "changeState", "params": {"stateName": "ShipSelect", "sendBGM": true}}) );  // stateName is the name of the state obj in the global scope
     this.uiItems.push( new uiItemText("Settings", "32px", "MenuFont", "white", 0.5, 0.55, "center", "middle", {"command": "changeState", "params": {"stateName": "Settings", "sendBGM": true}}) );
     this.uiItems.push( new uiItemText("How to Play", "32px", "MenuFont", "white", 0.5, 0.65, "center", "middle", {"command": "changeState", "params": {"stateName": "HowToPlay", "sendBGM": true}}) );
-    this.uiItems.push( new uiItemText("High Scores", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "HighScores", "sendBGM": false}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM (like a cool remix of "How Great Thou Art")
+    this.uiItems.push( new uiItemText("High Scores", "32px", "MenuFont", "white", 0.5, 0.75, "center", "middle", {"command": "changeState", "params": {"stateName": "HighScores", "sendBGM": true}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM (like a cool remix of "How Great Thou Art")
     this.uiItems.push( new uiItemText("Credits", "32px", "MenuFont", "white", 0.5, 0.85, "center", "middle", {"command": "changeState", "params": {"stateName": "Credits", "sendBGM": false}}) );   // Not sending BGM to the Credis state, because we want that state to have its own BGM
 
-    this.bgm = null;
     // TODO move bgm out to a sound/resource manager. We're just testing here -- make the BGM/sound manager global (or, at least not actually "global", but visible to all game states)
     if (transferObj && transferObj.bgmObj) {
         this.bgm = transferObj.bgmObj;
